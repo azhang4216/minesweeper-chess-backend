@@ -1,0 +1,23 @@
+{
+  "name": "minesweeper-chess-backend",
+  "version": "1.0.0",
+  "description": "Socket.IO + Node.js + Express server powering the multiplayer logic for Minesweeper Chess. Click [here](https://github.com/azhang4216/minesweeper-chess-frontend) for the frontend repo.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azhang4216/minesweeper-chess-backend.git"
+  },
+  "author": "Angela Zhang",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/azhang4216/minesweeper-chess-backend/issues"
+  },
+  "homepage": "https://github.com/azhang4216/minesweeper-chess-backend#readme",
+  "dependencies": {
+    "socket.io": "^4.8.1",
+    "chess.js": "^0.12.0"
+  }
+}
