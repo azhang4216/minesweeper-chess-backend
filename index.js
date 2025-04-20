@@ -42,7 +42,7 @@ const GAME_STATES = {
 const games = {};
 
 // key: socket id, val: room id assigned
-const queuedPlayers = {};
+const activePlayers = {};  // includes people playing and people in the queue
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
@@ -65,11 +65,11 @@ io.on("connection", (socket) => {
                 game_state: GAME_STATES.matching
             };
 
-            queuedPlayers[socket.id] = roomId;
+            activePlayers[socket.id] = roomId;
 
             socket.join(roomId);
             console.log(`User ${socket.id} started a new room ${roomId}`)
-            socket.emit("roomCreated", { roomId, message: "Room created. Waiting for opponent..."});
+            socket.emit("roomCreated", { roomId, message: "Room created. Waiting for opponent..." });
             return;
 
         } else if (room.players.length >= 2) {
@@ -88,9 +88,9 @@ io.on("connection", (socket) => {
         });
         room.game = new Chess();
         room.game_state = GAME_STATES.placing_bombs;
-        
+
         socket.join(roomId);
-        queuedPlayers[socket.id] = roomId;
+        activePlayers[socket.id] = roomId;
         console.log(`User ${socket.id} is matched, joining room ${roomId}`);
 
         room.game_state = GAME_STATES.placing_bombs;
@@ -104,7 +104,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("placeBomb", (square) => {
-        const roomId = queuedPlayers[socket.id];
+        const roomId = activePlayers[socket.id];
         const room = games[roomId];
         if (room.game_state = GAME_STATES.placing_bombs) {
             const player = (room.players[0].user_id === socket.id) ? room.players[0] : room.players[1];
@@ -135,14 +135,50 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("makeMove", ({ roomId, from, to, promotion }) => {
+    socket.on("makeMove", ({ from, to, promotion }) => {
+        const roomId = activePlayers[socket.id];
         const room = games[roomId];
 
+        console.log(`${socket.id} trying to make move: ${from} to ${to}.`);
+
         if (room.game_state === GAME_STATES.playing) {
-            const move = room.game.move({ from, to, promotion: promotion || "q" });
+            const move = room.game.move({ from, to, promotion });
+            console.log(room.game.fen());
             if (move) {
+                // figure out if we need to treat it specially
+                let specialMove = null;
+
+                // also there are: move.isEnPassant?.(), move.isBigPawn?.() which is for double pawn move
+                if (room.game.isCheckmate?.()) {
+                    specialMove = "checkmate";
+                } else if (room.game.isStalemate?.()) {
+                    specialMove = "stalemate";
+                } else if (room.game.isDraw?.()) {
+                    specialMove = "draw";
+                } else if (room.game.isDrawByFiftyMoves?.()) {
+                    specialMove = "draw by 50-move rule";
+                } else if (room.game.isThreefoldRepetition?.()) {
+                    specialMove = "threefold repetition";
+                } else if (room.game.isInsufficientMaterial?.()) {
+                    specialMove = "insufficient material";
+                } else if (room.game.in_check?.()) {
+                    specialMove = "in check";
+                } else if (move.isCapture?.() || move.isEnPassant?.()) {
+                    specialMove = "capture";
+                } else if (move.isPromotion?.()) {
+                    specialMove = "promotion";
+                } else if (move.isKingsideCastle?.() || move.isQueensideCastle?.()) {
+                    specialMove = "kingside castle";
+                }
+
                 // broadcast to both players this move
-                io.to(roomId).emit("gameState", room.game.fen());
+                console.log(room.game.fen());
+                io.to(roomId).emit("gameState", {
+                    gameFen: room.game.fen(),
+                    moveSan: move.san,
+                    specialMove,
+                    sideToMoveNext: room.game.fen(),
+                });
             } else {
                 // only need to broadcast to person who made invalid move
                 socket.emit("invalidMove");
@@ -150,17 +186,17 @@ io.on("connection", (socket) => {
         } else {
             console.log(`Room ${roomId}, player ${socket.id}: cannot move pieces when not in a playing game state.`);
         }
-        
+
     });
 
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
 
-        if (socket.id in queuedPlayers) {
-            const roomId = queuedPlayers[socket.id];
+        if (socket.id in activePlayers) {
+            const roomId = activePlayers[socket.id];
 
             games[roomId]["players"].forEach((player, _index, _array) => {
-                delete queuedPlayers[player.user_id];
+                delete activePlayers[player.user_id];
                 console.log(`Removed player ${player.user_id}, room ${roomId}, from active players.`);
             });
 
@@ -173,7 +209,7 @@ io.on("connection", (socket) => {
             });
 
             console.log(`Active games: ${JSON.stringify(games)}`);
-            console.log(`Active players: ${JSON.stringify(queuedPlayers)}`);
+            console.log(`Active players: ${JSON.stringify(activePlayers)}`);
         }
     });
 });
