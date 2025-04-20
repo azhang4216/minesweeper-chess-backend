@@ -111,12 +111,19 @@ io.on("connection", (socket) => {
             const isWhite = player.is_white;
             // TODO: send error messages instead of just console logging
             if (player.bombs.length < 3) {
-                if ((isWhite && (square[1] === '3' || square[1] === '4')) || (!isWhite && (square[1] === '5' || square[1] === '6'))) {
+                if (((isWhite && (square[1] === '3' || square[1] === '4')) || (!isWhite && (square[1] === '5' || square[1] === '6'))) && !(player.bombs.includes(square))) {
                     player.bombs.push(square);
                     console.log(`User ${socket.id} from room ${roomId} placed a bomb on ${square}.`);
 
                     // tell everyone in the game about this update
                     io.to(roomId).emit("bombPlaced", square);
+
+                    // check to see if we have finished placing bombs, so then we move onto the game
+                    if (room.players[0].bombs.length + room.players[1].bombs.length === 6) {
+                        room.game_state = GAME_STATES.playing;
+                        console.log(`Finished bomb placements for room ${roomId}.`);
+                        io.to(roomId).emit("startPlay");
+                    }
                 } else {
                     console.log(`User ${socket.id} from room ${roomId}, as ${isWhite ? "white" : "black"}, cannot place a bomb on ${square}.`);
                 }
@@ -129,17 +136,21 @@ io.on("connection", (socket) => {
     });
 
     socket.on("makeMove", ({ roomId, from, to, promotion }) => {
-        const game = games[roomId].game;
-        if (!game) return;
+        const room = games[roomId];
 
-        const move = game.move({ from, to, promotion: promotion || "q" });
-        if (move) {
-            // broadcast to both players this move
-            io.to(roomId).emit("gameState", game.fen());
+        if (room.game_state === GAME_STATES.playing) {
+            const move = room.game.move({ from, to, promotion: promotion || "q" });
+            if (move) {
+                // broadcast to both players this move
+                io.to(roomId).emit("gameState", room.game.fen());
+            } else {
+                // only need to broadcast to person who made invalid move
+                socket.emit("invalidMove");
+            }
         } else {
-            // only need to broadcast to person who made invalid move
-            socket.emit("invalidMove");
+            console.log(`Room ${roomId}, player ${socket.id}: cannot move pieces when not in a playing game state.`);
         }
+        
     });
 
     socket.on("disconnect", () => {
