@@ -143,13 +143,23 @@ io.on("connection", (socket) => {
 
         if (room.game_state === GAME_STATES.playing) {
             const move = room.game.move({ from, to, promotion });
-            console.log(room.game.fen());
+            const preExplosionFen = room.game.fen();
             if (move) {
-                // figure out if we need to treat it specially
                 let specialMove = null;
 
                 // also there are: move.isEnPassant?.(), move.isBigPawn?.() which is for double pawn move
-                if (room.game.isCheckmate?.()) {
+                if (room.players[0].bombs.includes(to) || room.players[1].bombs.includes(to)) {
+                    specialMove = `explode ${to}`;
+
+                    // get rid of detonated bomb
+                    const player = room.players[0].bombs.includes(to)
+                        ? room.players[0]
+                        : room.players[1];
+                    player.bombs = player.bombs.filter(bomb => bomb !== to);
+
+                    // remove the piece that set off that bomb
+                    room.game.remove(to);
+                } else if (room.game.isCheckmate?.()) {
                     specialMove = "checkmate";
                 } else if (room.game.isStalemate?.()) {
                     specialMove = "stalemate";
@@ -172,12 +182,12 @@ io.on("connection", (socket) => {
                 }
 
                 // broadcast to both players this move
-                console.log(room.game.fen());
                 io.to(roomId).emit("gameState", {
                     gameFen: room.game.fen(),
-                    moveSan: move.san,
+                    moveSan: move.san + (specialMove && specialMove.startsWith("explode") ? "💣💥" : ""),
                     specialMove,
-                    sideToMoveNext: room.game.fen(),
+                    sideToMoveNext: room.game.turn(),
+                    preExplosionFen   // different from gameFen only if explosion happened
                 });
             } else {
                 // only need to broadcast to person who made invalid move
