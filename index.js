@@ -3,6 +3,9 @@ const http = require("http");
 const express = require("express");
 const { Chess } = require("chess.js");
 
+// helper functions
+const { eloRatingChange } = require('./helpers/calculateElo');
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -27,12 +30,14 @@ const GAME_STATES = {
             {
                 id: string,
                 is_white: boolean,
-                bombs: []
+                bombs: [],
+                elo: int
             },
             {
                 id: string,
                 is_white: boolean,
-                bombs: []
+                bombs: [],
+                elo: int
             }
         ]
         game: Chess object,
@@ -59,7 +64,8 @@ io.on("connection", (socket) => {
                         // TODO: replace id when authentication done for persistence
                         user_id: socket.id,
                         is_white: Math.random() < 0.5, // 50% change of being either or
-                        bombs: []
+                        bombs: [],
+                        elo: 1500,                     // place holder
                     }
                 ],
                 game_state: GAME_STATES.matching
@@ -84,7 +90,8 @@ io.on("connection", (socket) => {
         room.players.push({
             user_id: socket.id,
             is_white: !room.players[0].is_white,
-            bombs: []
+            bombs: [],
+            elo: 1500, // placeholder
         });
         room.game = new Chess();
         room.game_state = GAME_STATES.placing_bombs;
@@ -145,6 +152,8 @@ io.on("connection", (socket) => {
             const move = room.game.move({ from, to, promotion });
             const preExplosionFen = room.game.fen();
             if (move) {
+                // special move tells us if we need to play sound effects or take specific actions accordingly
+                // note: special move does NOT handle any game-ending moves
                 let specialMove = null;
 
                 // also there are: move.isEnPassant?.(), move.isBigPawn?.() which is for double pawn move
@@ -159,18 +168,6 @@ io.on("connection", (socket) => {
 
                     // remove the piece that set off that bomb
                     room.game.remove(to);
-                } else if (room.game.isCheckmate?.()) {
-                    specialMove = "checkmate";
-                } else if (room.game.isStalemate?.()) {
-                    specialMove = "stalemate";
-                } else if (room.game.isDraw?.()) {
-                    specialMove = "draw";
-                } else if (room.game.isDrawByFiftyMoves?.()) {
-                    specialMove = "draw by 50-move rule";
-                } else if (room.game.isThreefoldRepetition?.()) {
-                    specialMove = "threefold repetition";
-                } else if (room.game.isInsufficientMaterial?.()) {
-                    specialMove = "insufficient material";
                 } else if (room.game.in_check?.()) {
                     specialMove = "in check";
                 } else if (move.isCapture?.() || move.isEnPassant?.()) {
@@ -189,6 +186,48 @@ io.on("connection", (socket) => {
                     sideToMoveNext: room.game.turn(),
                     preExplosionFen   // different from gameFen only if explosion happened
                 });
+
+                // tell players if this resulted in a game over move
+                if (room.game.isOver()) {
+                    if (room.game.isDraw?.()) {
+                        const [whiteEloChange, blackEloChange] = eloRatingChange(
+                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo, 
+                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo, 
+                            0.5
+                        );
+
+                        io.to(roomId).emit("drawGameOver", {
+                            by: room.game.isDrawByFiftyMoves?.() && "50-move rule" ||
+                                room.game.isThreefoldRepetition?.() && "threefold repetition" ||
+                                room.game.isInsufficientMaterial?.() && "insufficient material" ||
+                                room.game.isStalemate?.() && "stalemate" ||
+                                null, // technically, should never be null
+                            whiteEloChange,
+                            blackEloChange,
+                        });
+                    } else {          // someone won, and someone lost
+                        const indexOfPlayerWhoJustMoved = (room.players[0].id === socket.id) ? 0 : 1;
+                        const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].isWhite;
+
+                        // special case: if king exploded, then the person who made the move lost
+                        //               otherwise, whoever made the move won 
+                        const kingBlewUp = specialMove.startsWith("explode") && !chess.findPiece({ type: KING, color: ((isPlayerWhoJustMovedWhite) ? WHITE : BLACK) });
+                        const winnerColor = (isPlayerWhoJustMovedWhite && !kingBlewUp) ? "w" : "b";
+
+                        const [whiteEloChange, blackEloChange] = eloRatingChange(
+                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo, 
+                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo, 
+                            (winnerColor === "w") ? 1 : 0, 
+                        );
+
+                        io.to(roomId).emit("winLossGameOver", {
+                            winner: winnerColor,
+                            by: (kingBlewUp) ? "king blowing up?!" : "checkmate",  // TODO: also add timeout, abandon, etc.
+                            whiteEloChange,
+                            blackEloChange,
+                        });
+                    }
+                }
             } else {
                 // only need to broadcast to person who made invalid move
                 socket.emit("invalidMove");
