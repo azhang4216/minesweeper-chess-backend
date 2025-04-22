@@ -1,7 +1,16 @@
 const { Server } = require("socket.io");
 const http = require("http");
 const express = require("express");
-const { Chess } = require("chess.js");
+const { 
+    Chess,
+    Piece,
+    WHITE,
+    BLACK,
+    KING,
+    QUEEN,
+    KNIGHT,
+    PAWN, 
+} = require("chess.js");
 
 // helper functions
 const { eloRatingChange } = require('./helpers/calculateElo');
@@ -94,6 +103,165 @@ io.on("connection", (socket) => {
             elo: 1500, // placeholder
         });
         room.game = new Chess();
+
+        /* 
+        the NEW version is this:
+        Chess {
+  _board: [
+    { type: 'r', color: 'b' },
+    { type: 'n', color: 'b' },
+    { type: 'b', color: 'b' },
+    { type: 'q', color: 'b' },
+    { type: 'k', color: 'b' },
+    { type: 'b', color: 'b' },
+    { type: 'n', color: 'b' },
+    { type: 'r', color: 'b' },
+    <8 empty items>,
+    { type: 'p', color: 'b' },
+    { type: 'p', color: 'b' },
+    { type: 'p', color: 'b' },
+    { type: 'p', color: 'b' },
+    { type: 'p', color: 'b' },
+    { type: 'p', color: 'b' },
+    { type: 'p', color: 'b' },
+    { type: 'p', color: 'b' },
+    <72 empty items>,
+    { type: 'p', color: 'w' },
+    { type: 'p', color: 'w' },
+    { type: 'p', color: 'w' },
+    { type: 'p', color: 'w' },
+    { type: 'p', color: 'w' },
+    { type: 'p', color: 'w' },
+    { type: 'p', color: 'w' },
+    { type: 'p', color: 'w' },
+    <8 empty items>,
+    { type: 'r', color: 'w' },
+    { type: 'n', color: 'w' },
+    { type: 'b', color: 'w' },
+    { type: 'q', color: 'w' },
+    { type: 'k', color: 'w' },
+    { type: 'b', color: 'w' },
+    { type: 'n', color: 'w' },
+    { type: 'r', color: 'w' },
+    <8 empty items>
+  ],
+  _turn: 'w',
+  _header: {
+    Event: '?',
+    Site: '?',
+    Date: '????.??.??',
+    Round: '?',
+    White: '?',
+    Black: '?',
+    Result: '*',
+    WhiteTitle: null,
+    BlackTitle: null,
+    WhiteElo: null,
+    BlackElo: null,
+    WhiteUSCF: null,
+    BlackUSCF: null,
+    WhiteNA: null,
+    BlackNA: null,
+    WhiteType: null,
+    BlackType: null,
+    EventDate: null,
+    EventSponsor: null,
+    Section: null,
+    Stage: null,
+    Board: null,
+    Opening: null,
+    Variation: null,
+    SubVariation: null,
+    ECO: null,
+    NIC: null,
+    Time: null,
+    UTCTime: null,
+    UTCDate: null,
+    TimeControl: null,
+    SetUp: null,
+    FEN: null,
+    Termination: null,
+    Annotator: null,
+    Mode: null,
+    PlyCount: null
+  },
+  _kings: { w: 116, b: 4 },
+  _epSquare: -1,
+  _halfMoves: 0,
+  _moveNumber: 1,
+  _history: [],
+  _comments: {},
+  _castling: { w: 96, b: 96 },
+  _positionCount: { 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -': 1 }
+}
+        */
+        /* 
+        room.game is this: (v0.12.0)
+        {
+            WHITE: 'w',
+            BLACK: 'b',
+            PAWN: 'p',
+            KNIGHT: 'n',
+            BISHOP: 'b',
+            ROOK: 'r',
+            QUEEN: 'q',
+            KING: 'k',
+            SQUARES: [
+                'a8', 'b8', 'c8', 'd8', 'e8', 'f8', 'g8',
+                'h8', 'a7', 'b7', 'c7', 'd7', 'e7', 'f7',
+                'g7', 'h7', 'a6', 'b6', 'c6', 'd6', 'e6',
+                'f6', 'g6', 'h6', 'a5', 'b5', 'c5', 'd5',
+                'e5', 'f5', 'g5', 'h5', 'a4', 'b4', 'c4',
+                'd4', 'e4', 'f4', 'g4', 'h4', 'a3', 'b3',
+                'c3', 'd3', 'e3', 'f3', 'g3', 'h3', 'a2',
+                'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2',
+                'a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1',
+                'h1'
+            ],
+            FLAGS: {
+                NORMAL: 'n',
+                CAPTURE: 'c',
+                BIG_PAWN: 'b',
+                EP_CAPTURE: 'e',
+                PROMOTION: 'p',
+                KSIDE_CASTLE: 'k',
+                QSIDE_CASTLE: 'q'
+            },
+            load: [Function: load],
+            reset: [Function: reset],
+            moves: [Function: moves],
+            in_check: [Function: in_check],
+            in_checkmate: [Function: in_checkmate],
+            in_stalemate: [Function: in_stalemate],
+            in_draw: [Function: in_draw],
+            insufficient_material: [Function: insufficient_material],
+            in_threefold_repetition: [Function: in_threefold_repetition],
+            game_over: [Function: game_over],
+            validate_fen: [Function: validate_fen],
+            fen: [Function: fen],
+            board: [Function: board],
+            pgn: [Function: pgn],
+            load_pgn: [Function: load_pgn],
+            header: [Function: header],
+            ascii: [Function: ascii],
+            turn: [Function: turn],
+            move: [Function: move],
+            undo: [Function: undo],
+            clear: [Function: clear],
+            put: [Function: put],
+            get: [Function: get],
+            remove: [Function: remove],
+            perft: [Function: perft],
+            square_color: [Function: square_color],
+            history: [Function: history],
+            get_comment: [Function: get_comment],
+            set_comment: [Function: set_comment],
+            delete_comment: [Function: delete_comment],
+            get_comments: [Function: get_comments],
+            delete_comments: [Function: delete_comments]
+            }
+        */
+
         room.game_state = GAME_STATES.placing_bombs;
 
         socket.join(roomId);
@@ -149,8 +317,19 @@ io.on("connection", (socket) => {
         console.log(`${socket.id} trying to make move: ${from} to ${to}.`);
 
         if (room.game_state === GAME_STATES.playing) {
-            const move = room.game.move({ from, to, promotion });
-            const preExplosionFen = room.game.fen();
+            let move = null; 
+            
+            try {
+                move = room.game.move({ from, to, promotion });
+            } catch (_e) {
+                console.log("tried to make illegal move");
+            }
+            const preExplosionFen = room.game.fen();  // for explosion animation purposes
+
+            // { color: 'w', from: 'e2', to: 'e3', flags: 'n', piece: 'p', san: 'e3' }
+            // console.log(move);
+
+            
             if (move) {
                 // special move tells us if we need to play sound effects or take specific actions accordingly
                 // note: special move does NOT handle any game-ending moves
@@ -168,14 +347,14 @@ io.on("connection", (socket) => {
 
                     // remove the piece that set off that bomb
                     room.game.remove(to);
-                } else if (room.game.in_check?.()) {
+                } else if (room.game.inCheck?.()) {
                     specialMove = "in check";
                 } else if (move.isCapture?.() || move.isEnPassant?.()) {
                     specialMove = "capture";
                 } else if (move.isPromotion?.()) {
                     specialMove = "promotion";
                 } else if (move.isKingsideCastle?.() || move.isQueensideCastle?.()) {
-                    specialMove = "kingside castle";
+                    specialMove = "castle";
                 }
 
                 // broadcast to both players this move
@@ -187,12 +366,70 @@ io.on("connection", (socket) => {
                     preExplosionFen   // different from gameFen only if explosion happened
                 });
 
-                // tell players if this resulted in a game over move
-                if (room.game.isOver()) {
+                const indexOfPlayerWhoJustMoved = (room.players[0].user_id === socket.id) ? 0 : 1;
+                const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].is_white;
+                const isWhiteKingMissing = room.game.findPiece({ type: KING, color: WHITE }).length == 0;
+                const isBlackKingMissing = room.game.findPiece({ type: KING, color: BLACK }).length == 0;
+
+                // 
+                /* 
+                tell players if this resulted in a game over move!
+                -> note: needed a CUSTOM way to check if game is over
+                         because exploded squares & missing king both cause null assignment error
+                */
+                if (specialMove && specialMove.startsWith("explode")) {
+                    // there are 2 ways in which an explosion could cause a game over
+                    if ((isPlayerWhoJustMovedWhite && isWhiteKingMissing) || (!isPlayerWhoJustMovedWhite && isBlackKingMissing)) {
+                        // case 1. king stepped into a bomb => game over
+                        //         which means the person who just moved it exploded their king
+                        const winnerColor = isPlayerWhoJustMovedWhite ? "b" : "w";
+                        const [whiteEloChange, blackEloChange] = eloRatingChange(
+                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
+                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                            (winnerColor === "w") ? 1 : 0,
+                        );
+    
+                        io.to(roomId).emit("winLossGameOver", {
+                            winner: winnerColor,
+                            by: "king blowing up?!",
+                            whiteEloChange,
+                            blackEloChange,
+                        });
+                    } else if (room.game.isInsufficientMaterial()) {
+                        // case 2. a non-king piece stepped into a bomb => draw by insufficient material
+                        // note: documentation checks piece by piece so exploded bomb shouldn't affect it
+                        const [whiteEloChange, blackEloChange] = eloRatingChange(
+                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
+                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                            0.5
+                        );
+
+                        io.to(roomId).emit("drawGameOver", {
+                            by: "insufficient material",
+                            whiteEloChange,
+                            blackEloChange,
+                        });
+                    }
+                } else if (isWhiteKingMissing || isBlackKingMissing) {
+                    const winnerColor = isBlackKingMissing ? "w" : "b";
+                    const [whiteEloChange, blackEloChange] = eloRatingChange(
+                        (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
+                        (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                        (winnerColor === "w") ? 1 : 0,
+                    );
+
+                    io.to(roomId).emit("winLossGameOver", {
+                        winner: winnerColor,
+                        by: "king captured", // could say "checkmate"
+                        whiteEloChange,
+                        blackEloChange,
+                    });
+                } else if (room.game.isGameOver()) {
+                    // a "usual" game over, so no "null" references
                     if (room.game.isDraw?.()) {
                         const [whiteEloChange, blackEloChange] = eloRatingChange(
-                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo, 
-                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo, 
+                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
+                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
                             0.5
                         );
 
@@ -206,61 +443,56 @@ io.on("connection", (socket) => {
                             blackEloChange,
                         });
                     } else {          // someone won, and someone lost
-                        const indexOfPlayerWhoJustMoved = (room.players[0].id === socket.id) ? 0 : 1;
-                        const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].isWhite;
-
-                        // special case: if king exploded, then the person who made the move lost
-                        //               otherwise, whoever made the move won 
-                        const kingBlewUp = specialMove.startsWith("explode") && !chess.findPiece({ type: KING, color: ((isPlayerWhoJustMovedWhite) ? WHITE : BLACK) });
-                        const winnerColor = (isPlayerWhoJustMovedWhite && !kingBlewUp) ? "w" : "b";
+                        // in regular chess, whoever moves last for checkmate is winner
+                        const winnerColor = isPlayerWhoJustMovedWhite ? "w" : "b";
 
                         const [whiteEloChange, blackEloChange] = eloRatingChange(
-                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo, 
-                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo, 
-                            (winnerColor === "w") ? 1 : 0, 
+                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
+                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                            (winnerColor === "w") ? 1 : 0,
                         );
 
                         io.to(roomId).emit("winLossGameOver", {
                             winner: winnerColor,
-                            by: (kingBlewUp) ? "king blowing up?!" : "checkmate",  // TODO: also add timeout, abandon, etc.
+                            by: "checkmate",
                             whiteEloChange,
                             blackEloChange,
                         });
                     }
                 }
-            } else {
-                // only need to broadcast to person who made invalid move
-                socket.emit("invalidMove");
-            }
         } else {
-            console.log(`Room ${roomId}, player ${socket.id}: cannot move pieces when not in a playing game state.`);
+            // only need to broadcast to person who made invalid move
+            socket.emit("invalidMove");
         }
+    } else {
+        console.log(`Room ${roomId}, player ${socket.id}: cannot move pieces when not in a playing game state.`);
+    }
 
     });
 
-    socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
+socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
 
-        if (socket.id in activePlayers) {
-            const roomId = activePlayers[socket.id];
+    if (socket.id in activePlayers) {
+        const roomId = activePlayers[socket.id];
 
-            games[roomId]["players"].forEach((player, _index, _array) => {
-                delete activePlayers[player.user_id];
-                console.log(`Removed player ${player.user_id}, room ${roomId}, from active players.`);
-            });
+        games[roomId]["players"].forEach((player, _index, _array) => {
+            delete activePlayers[player.user_id];
+            console.log(`Removed player ${player.user_id}, room ${roomId}, from active players.`);
+        });
 
-            // TODO: persistent game recording in DB
-            delete games[roomId];
+        // TODO: persistent game recording in DB
+        delete games[roomId];
 
-            io.to(roomId).emit("playerDisconnected", {
-                roomId,
-                message: `Player ${socket.id} disconnected from game room ${roomId}.`
-            });
+        io.to(roomId).emit("playerDisconnected", {
+            roomId,
+            message: `Player ${socket.id} disconnected from game room ${roomId}.`
+        });
 
-            console.log(`Active games: ${JSON.stringify(games)}`);
-            console.log(`Active players: ${JSON.stringify(activePlayers)}`);
-        }
-    });
+        console.log(`Active games: ${JSON.stringify(games)}`);
+        console.log(`Active players: ${JSON.stringify(activePlayers)}`);
+    }
+});
 });
 
 server.listen(4000, () => console.log("Server running on port 4000"));

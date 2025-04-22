@@ -18,6 +18,6 @@
   "homepage": "https://github.com/azhang4216/minesweeper-chess-backend#readme",
   "dependencies": {
     "socket.io": "^4.8.1",
-    "chess.js": "^0.12.0"
+    "chess.js": "^1.2.0"
   }
 }
