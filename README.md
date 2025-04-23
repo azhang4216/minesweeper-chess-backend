@@ -88,6 +88,29 @@ REDIS_PORT=6379
 - Store replays and results in PostgreSQL
 - Add Redis pub/sub for multi-instance broadcasting
 
+## Directory Layout
+
+├── index.js                  # Main entry: starts the server
+├── server.js                 # Optional: export express & http server
+├── helpers
+│   └── calculateElo.js       # Elo rating logic
+│
+├── socket
+│   ├── index.js              # Initializes socket and attaches handlers
+│   ├── gameStates.js         # Contains GAME_STATES enum
+│   └── handlers
+│       ├── joinRoom.js       # joinRoom handler
+│       ├── placeBomb.js      # placeBomb handler
+│       ├── movePiece.js      # movePiece handler
+│       ├── disconnect.js     # disconnect logic
+│       ├── requestRematch.js # handles rematch requests
+│       └── forfeit.js        # forfeit/resign logic
+├── .gitignore
+├── LICENSE
+├── package-lock.json
+├── package.json
+├── README.md
+
 ## 📄 License
 
 MIT License
