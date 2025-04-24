@@ -2,6 +2,8 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const registerGameHandlers = require("./socket/registerGameHandlers");
+const { Redis } = require("@upstash/redis");
+const dotenv = require("dotenv");
 
 const app = express();
 const server = http.createServer(app);
@@ -10,36 +12,16 @@ const io = new Server(server, {
     cors: { origin: "*" },
 });
 
-// TODO: migrate these to a database
-/* 
-    room_id: {
-        id: room_id,
-        players: [
-            {
-                id: string,
-                is_white: boolean,
-                bombs: [],
-                elo: int
-            },
-            {
-                id: string,
-                is_white: boolean,
-                bombs: [],
-                elo: int
-            }
-        ]
-        game: Chess object,
-        game_state: "MATCHING", "PLACING_BOMBS", "PLAYING"
-    }
-*/
-const games = {};
+dotenv.config();
 
-// key: socket id, val: room id assigned
-const activePlayers = {};    // includes people playing and people in the queue
+const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN
+});
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-    registerGameHandlers(socket, io, games, activePlayers);
+    registerGameHandlers(socket, io, redis);
 });
 
 module.exports = { server };

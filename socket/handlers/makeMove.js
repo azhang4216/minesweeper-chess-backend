@@ -8,7 +8,7 @@ const {
     // KNIGHT,
     // PAWN, 
 } = require("chess.js");
-const { GAME_STATES } = require("../gameStates");
+const { GAME_STATES } = require("../../constants");
 const { eloRatingChange } = require("../../helpers/calculateElo");
 
 module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {

@@ -111,6 +111,32 @@ REDIS_PORT=6379
 ├── package.json
 ├── README.md
 
+## Redis Schema:
+
+```js
+/**
+ * Redis Schema:
+ *
+ * room:<roomId>:players                    -> Hash of players in the room
+ *   - socketId1: JSON.stringify({ is_white: boolean, bombs: str[], elo: int })
+ *   - socketId2: JSON.stringify({ is_white: boolean, bombs: str[], elo: int })
+ * 
+ * room:<roomId>:game_state                 -> String value of current room state
+ *
+ * room:<roomId>:game                       -> Stringified JSON object of the Chess object
+ *
+ * room:<roomId>:bombPlacementTimeRemaining -> Integer value (remaining time in ms for bomb placement)
+ *
+ * room:<roomId>:bombPlacementStartTime     -> Timestamp (start time for bomb placement phase)
+ *
+ * room:<roomId>:lastMoveTimestamp          -> Timestamp (last move timestamp in ms)
+ *
+ * room:<roomId>:fen                        -> String of current FEN state (optional, can be updated after each move)
+ *
+ * activePlayers:<socketId>                 -> String of roomId the player is in
+ */
+```
+
 ## 📄 License
 
 MIT License

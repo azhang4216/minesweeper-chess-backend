@@ -1,5 +1,5 @@
 const { Chess } = require("chess.js");
-const { GAME_STATES } = require("../gameStates");
+const { GAME_STATES } = require("../../constants");
 
 module.exports = (socket, io, games, activePlayers) => (square) => {
     const roomId = activePlayers[socket.id];
