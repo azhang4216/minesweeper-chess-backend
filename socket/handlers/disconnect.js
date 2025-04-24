@@ -1,4 +1,4 @@
-module.exports = (socket, io, games, activePlayers) => () => {
+module.exports = (socket, io, games, activePlayers, redis) => () => {
     console.log("User disconnected:", socket.id);
 
     const roomId = activePlayers[socket.id];

@@ -1,7 +1,7 @@
 const { Chess } = require("chess.js");
 const { GAME_STATES } = require("../gameStates");
 
-module.exports = (socket, io, games, activePlayers) => (roomId) => {
+module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => {
     console.log(`User ${socket.id} is trying to join room ${roomId}...`);
     const room = games[roomId];
 
@@ -53,10 +53,19 @@ module.exports = (socket, io, games, activePlayers) => (roomId) => {
     activePlayers[socket.id] = roomId;
     console.log(`User ${socket.id} is matched, joining room ${roomId}`);
 
+    // start timer - 1 minute to place bombs
+    const secsToPlaceBomb = 60;
+    await redis.set(`bomb_timer:${roomId}`, "", { ex: secsToPlaceBomb });
+
+    // TODO: implement other time controls
+    const secsToPlay = 300;
+
     io.to(roomId).emit("roomJoined", {
         roomId,
         message: "Both players joined. Game can start!",
         players: room.players,
-        fen: room.game.fen()
+        fen: room.game.fen(),
+        secsToPlaceBomb,
+        secsToPlay
     });
 };

@@ -11,7 +11,7 @@ const {
 const { GAME_STATES } = require("../gameStates");
 const { eloRatingChange } = require("../../helpers/calculateElo");
 
-module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {
+module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promotion }) => {
     const roomId = activePlayers[socket.id];
     if (!roomId) return;
 

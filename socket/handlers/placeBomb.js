@@ -1,7 +1,7 @@
 const { Chess } = require("chess.js");
 const { GAME_STATES } = require("../gameStates");
 
-module.exports = (socket, io, games, activePlayers) => (square) => {
+module.exports = (socket, io, games, activePlayers, redis) => (square) => {
     const roomId = activePlayers[socket.id];
     if (!roomId) return;
 
@@ -25,7 +25,7 @@ module.exports = (socket, io, games, activePlayers) => (square) => {
                 if (room.players[0].bombs.length + room.players[1].bombs.length === 6) {
                     room.game_state = GAME_STATES.playing;
                     console.log(`Finished bomb placements for room ${roomId}.`);
-                    io.to(roomId).emit("startPlay");
+                    io.to(roomId).emit("startPlay");  // no extra params mean everyone placed bombs already!
                 }
             } else {
                 console.log(`User ${socket.id} from room ${roomId}, as ${isWhite ? "white" : "black"}, cannot place a bomb on ${square}.`);
