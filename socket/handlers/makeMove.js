@@ -11,7 +11,43 @@ const {
 const { GAME_STATES } = require("../gameStates");
 const { eloRatingChange } = require("../../helpers/calculateElo");
 
-module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promotion }) => {
+const handleTimerLogic = async (io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved) => {
+    const timerKeyOfPlayerWhoJustMoved = `player_timer:${roomId}:${isPlayerWhoJustMovedWhite ? "white" : "black"}`;
+
+    // since this player made their move, we first stop their clock and check how much time they have left
+    const timeLeftForPlayerWhoJustMoved = await redis.ttl(timerKeyOfPlayerWhoJustMoved);
+    room.players[indexOfPlayerWhoJustMoved].seconds_left = timeLeftForPlayerWhoJustMoved;
+
+    // this player doesn't need to time out => remove their timeout key
+    const valOfTimerKeyOfPlayerWhoJustMoved = await redis.getdel(timerKeyOfPlayerWhoJustMoved); 
+    if (valOfTimerKeyOfPlayerWhoJustMoved === "") {
+        console.log(`Successfully deleted key ${timerKeyOfPlayerWhoJustMoved}`);
+    } else {
+        console.log(`Could not find key ${timerKeyOfPlayerWhoJustMoved}`);
+    };
+
+    console.log(`There is ${timeLeftForPlayerWhoJustMoved} seconds left for the player who just moved in room ${roomId}.`);
+
+    // now, after server logic, we start the next player's timer
+    const timerKeyOfPlayerAboutToMove = `player_timer:${roomId}:${isPlayerWhoJustMovedWhite ? "black" : "white"}`;
+    const timeLeftForPlayerAboutToMove = room.players[indexOfPlayerWhoJustMoved === 0 ? 1 : 0].seconds_left;
+    console.log(`There is ${timeLeftForPlayerAboutToMove} seconds left for the player about to move in room ${roomId}.`);
+
+    if (timeLeftForPlayerAboutToMove > 0) {
+        await redis.set(timerKeyOfPlayerAboutToMove, "", { ex: timeLeftForPlayerAboutToMove });
+    } else {
+        console.log(`Cannot set a non-positive ttl for room ${roomId}`);
+    };
+
+    // tell the connected sockets about our updated times for syncing!
+    io.to(roomId).emit("syncTime", {
+        whiteTimeLeft: isPlayerWhoJustMovedWhite ? timeLeftForPlayerWhoJustMoved : timeLeftForPlayerAboutToMove,
+        blackTimeLeft: isPlayerWhoJustMovedWhite ? timeLeftForPlayerAboutToMove : timeLeftForPlayerWhoJustMoved
+    });
+};
+
+
+module.exports = (socket, io, games, activePlayers, redis) => async ({ from, to, promotion }) => {
     const roomId = activePlayers[socket.id];
     if (!roomId) return;
 
@@ -29,6 +65,12 @@ module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promo
             console.log("tried to make illegal move");
         }
         const preExplosionFen = room.game.fen();  // for explosion animation purposes
+
+        const indexOfPlayerWhoJustMoved = (room.players[0].user_id === socket.id) ? 0 : 1;
+        const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].is_white;
+
+        // run timer logic in parallel for less delay - no need to wait for it to finish before moving on
+        handleTimerLogic(io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved);
 
         if (move) {
             // special move tells us if we need to play sound effects or take specific actions accordingly
@@ -66,10 +108,12 @@ module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promo
                 preExplosionFen   // different from gameFen only if explosion happened
             });
 
-            const indexOfPlayerWhoJustMoved = (room.players[0].user_id === socket.id) ? 0 : 1;
-            const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].is_white;
             const isWhiteKingMissing = room.game.findPiece({ type: KING, color: WHITE }).length == 0;
             const isBlackKingMissing = room.game.findPiece({ type: KING, color: BLACK }).length == 0;
+
+            console.log(`White king is missing: ${isWhiteKingMissing}`);
+            console.log(`Black king is missing: ${isBlackKingMissing}`);
+            console.log(`Special move: ${specialMove}`);
 
             // 
             /* 
@@ -79,7 +123,8 @@ module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promo
             */
             if (specialMove && specialMove.startsWith("explode")) {
                 // there are 2 ways in which an explosion could cause a game over
-                if ((isPlayerWhoJustMovedWhite && isWhiteKingMissing) || (!isPlayerWhoJustMovedWhite && isBlackKingMissing)) {
+                if (isWhiteKingMissing || isBlackKingMissing) {
+                    console.log("King blew up!");
                     // case 1. king stepped into a bomb => game over
                     //         which means the person who just moved it exploded their king
                     const winnerColor = isPlayerWhoJustMovedWhite ? "b" : "w";
@@ -89,6 +134,8 @@ module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promo
                         (winnerColor === "w") ? 1 : 0,
                     );
 
+                    room.game_state = GAME_STATES.game_over;
+
                     io.to(roomId).emit("winLossGameOver", {
                         winner: winnerColor,
                         by: "king blowing up?!",
@@ -96,6 +143,7 @@ module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promo
                         blackEloChange,
                     });
                 } else if (room.game.isInsufficientMaterial()) {
+                    console.log("Draw by insufficient material (blew up)");
                     // case 2. a non-king piece stepped into a bomb => draw by insufficient material
                     // note: documentation checks piece by piece so exploded bomb shouldn't affect it
                     const [whiteEloChange, blackEloChange] = eloRatingChange(
@@ -105,7 +153,7 @@ module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promo
                     );
 
                     io.to(roomId).emit("drawGameOver", {
-                        by: "insufficient material",
+                        by: "insufficient material (a piece exploded!)",
                         whiteEloChange,
                         blackEloChange,
                     });
@@ -117,6 +165,8 @@ module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promo
                     (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
                     (winnerColor === "w") ? 1 : 0,
                 );
+
+                room.game_state = GAME_STATES.game_over;
 
                 io.to(roomId).emit("winLossGameOver", {
                     winner: winnerColor,
@@ -152,14 +202,16 @@ module.exports = (socket, io, games, activePlayers, redis) => ({ from, to, promo
                         (winnerColor === "w") ? 1 : 0,
                     );
 
+                    room.game_state = GAME_STATES.game_over;
+
                     io.to(roomId).emit("winLossGameOver", {
                         winner: winnerColor,
                         by: "checkmate",
                         whiteEloChange,
                         blackEloChange,
                     });
-                }
-            }
+                };
+            };
         } else {
             // only need to broadcast to person who made invalid move
             socket.emit("invalidMove");

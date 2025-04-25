@@ -5,6 +5,9 @@ module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => 
     console.log(`User ${socket.id} is trying to join room ${roomId}...`);
     const room = games[roomId];
 
+    // TODO: implement other time controls
+    const secsToPlay = 40;
+
     if (!room) {
         // create a new room
         games[roomId] = {
@@ -15,6 +18,7 @@ module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => 
                     is_white: Math.random() < 0.5, // 50% change of being either or
                     bombs: [],
                     elo: 1500,                     // place holder
+                    seconds_left: secsToPlay       // updated from end of their move, so does not reflect CURRENT seconds left
                 }
             ],
             game_state: GAME_STATES.matching
@@ -41,6 +45,7 @@ module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => 
         is_white: !room.players[0].is_white,
         bombs: [],
         elo: 1500, // TODO: replace with real elo once profiles feature implemented
+        seconds_left: secsToPlay
     });
 
     // different starting positions to test with!
@@ -48,17 +53,17 @@ module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => 
 
     room.game = new Chess(twoRooksOneKing);
     room.game_state = GAME_STATES.placing_bombs;
+    room.time_control = secsToPlay;
 
     socket.join(roomId);
     activePlayers[socket.id] = roomId;
     console.log(`User ${socket.id} is matched, joining room ${roomId}`);
 
     // start timer - 1 minute to place bombs
-    const secsToPlaceBomb = 60;
+    // const secsToPlaceBomb = 60;
+    const secsToPlaceBomb = 30;
     await redis.set(`bomb_timer:${roomId}`, "", { ex: secsToPlaceBomb });
-
-    // TODO: implement other time controls
-    const secsToPlay = 300;
+    console.log(`Set a bomb timer for room ${roomId}`);
 
     io.to(roomId).emit("roomJoined", {
         roomId,

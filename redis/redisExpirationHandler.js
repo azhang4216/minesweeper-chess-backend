@@ -1,4 +1,5 @@
 const { GAME_STATES } = require("../socket/gameStates");
+const { eloRatingChange } = require("../helpers/calculateElo");
 
 function fillBombs(games, roomId) {
     const room = games[roomId];
@@ -41,23 +42,27 @@ function fillBombs(games, roomId) {
  * @param {Server} io - The Socket.IO server instance.
  * @returns {function} - A callback function to handle Redis pmessage events.
  */
-module.exports = function handleRedisExpiration(io, games, activePlayers) {
-    return (pattern, channel, message) => {
+module.exports = function handleRedisExpiration(io, redis, games, _activePlayers) {
+    return async (pattern, channel, message) => {
         console.log(`Redis key expired: ${pattern}; ${channel}, ${message}`);
 
         const splitMessage = message.split(":");
         const messageType = splitMessage[0];
+        const roomId = splitMessage[1];
+        const room = games[roomId];
+
+        if (!room) {
+            console.log(`Room ${roomId} doesn't exist in games.`);
+            return;
+        };
+
+        /* 
+        for bomb timer, we have key bomb_timer:roomId
+        for player timer, we have key player_timer:roomId:<white||black>, depending on whose move it is
+        */
 
         switch (messageType) {
             case "bomb_timer":
-                const roomId = splitMessage[1];
-                const room = games[roomId];
-
-                if (!room) {
-                    console.log(`Room ${roomId} doesn't exist in games.`);
-                    break;
-                };
-
                 // first, we stop players from being able to place bombs by setting game to a different setting
                 room.game_state = GAME_STATES.playing;
 
@@ -68,13 +73,42 @@ module.exports = function handleRedisExpiration(io, games, activePlayers) {
                 } else {
                     console.log(`Randomized white player bombs: ${whitePlayerBombs}`);
                     console.log(`Randomized black player bombs: ${blackPlayerBombs}`);
-                    io.emit("startPlay", { whitePlayerBombs, blackPlayerBombs });
+                    io.to(roomId).emit("startPlay", { whitePlayerBombs, blackPlayerBombs });
                 };
+
+                // third, we start the timer for white to play
+                const secondsOnClock = room.time_control;
+                const whiteTimerStartKey = `player_timer:${roomId}:white`;
+                const numberOfKeysForWhiteTimer = await redis.exists(whiteTimerStartKey);
+                console.log(`Redis has white timer key for randomly placed bombs? ${numberOfKeysForWhiteTimer}`);
+
+                if (numberOfKeysForWhiteTimer === 0) {
+                    await redis.set(whiteTimerStartKey, "", { ex: secondsOnClock });
+                    console.log(`Set white timer start for room ${roomId}`);
+                } else {
+                    console.log(`White timer start for room ${roomId} already exists`);
+                };
+
                 break;
             
-            case "player_timeout":
-                console.log("player timed out");
-                io.emit("playerTimedOut");
+            case "player_timer":
+                const colorOfPlayerWhoTimedOut = splitMessage[2];
+                console.log(`${colorOfPlayerWhoTimedOut} player timed out`);
+
+                const [whiteEloChange, blackEloChange] = eloRatingChange(
+                    (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
+                    (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                    (colorOfPlayerWhoTimedOut === "white") ? 0 : 1,
+                );
+
+                room.game_state = GAME_STATES.game_over;
+
+                io.to(roomId).emit("winLossGameOver", {
+                    winner: (colorOfPlayerWhoTimedOut === "white") ? "b" : "w",
+                    by: "time out",
+                    whiteEloChange,
+                    blackEloChange,
+                });
                 break;
             default:
                 console.warn("Unknown expiration key:", message);

@@ -39,17 +39,20 @@ const redisSubscriber = new IORedis(process.env.UPSTASH_REDIS_URL, {
                 id: string,
                 is_white: boolean,
                 bombs: [],
-                elo: int
+                elo: int,
+                seconds_left: int     // note: this is updated from end of their move, so does not reflect CURRENT seconds left
             },
             {
                 id: string,
                 is_white: boolean,
                 bombs: [],
-                elo: int
+                elo: int,
+                seconds_left: int
             }
         ]
         game: Chess object,
-        game_state: "MATCHING", "PLACING_BOMBS", "PLAYING"
+        game_state: "MATCHING", "PLACING_BOMBS", "PLAYING",
+        time_control: int (number of seconds)
     }
 */
 const games = {};
@@ -58,15 +61,15 @@ const games = {};
 const activePlayers = {};    // includes people playing and people in the queue
 
 // 🔔 Subscribe to key expiration events
-redisSubscriber.psubscribe("__keyevent@0__:expired", (err, count) => {
+redisSubscriber.psubscribe("__keyevent@0__:expired", (err, _count) => {
     if (err) console.error("Subscription error:", err);
 });
 
-redisSubscriber.on("pmessage", handleRedisExpiration(io, games, activePlayers));
+redisSubscriber.on("pmessage", handleRedisExpiration(io, redis, games, activePlayers));
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-    registerGameHandlers(socket, io, games, activePlayers, redis, redisSubscriber);
+    registerGameHandlers(socket, io, games, activePlayers, redis);
 });
 
 module.exports = { server };
