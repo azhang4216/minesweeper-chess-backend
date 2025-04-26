@@ -7,7 +7,7 @@ module.exports = (socket, io, games, activePlayers) => (roomId) => {
     const room = games[roomId];
 
     // TODO: implement other time controls
-    const secsToPlay = 40;
+    const secsToPlay = 300; // 5 minutes
 
     if (!room) {
         // create a new room
