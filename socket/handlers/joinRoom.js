@@ -1,7 +1,8 @@
 const { Chess } = require("chess.js");
 const { GAME_STATES } = require("../gameStates");
+const { CountdownTimer, randomlyFillBombs } = require("../../helpers");
 
-module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => {
+module.exports = (socket, io, games, activePlayers) => (roomId) => {
     console.log(`User ${socket.id} is trying to join room ${roomId}...`);
     const room = games[roomId];
 
@@ -18,7 +19,7 @@ module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => 
                     is_white: Math.random() < 0.5, // 50% change of being either or
                     bombs: [],
                     elo: 1500,                     // place holder
-                    seconds_left: secsToPlay       // updated from end of their move, so does not reflect CURRENT seconds left
+                    // we will add the timer later, when the second player joins
                 }
             ],
             game_state: GAME_STATES.matching
@@ -27,7 +28,7 @@ module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => 
         activePlayers[socket.id] = roomId;
 
         socket.join(roomId);
-        console.log(`User ${socket.id} started a new room ${roomId}`)
+        console.log(`User ${socket.id} started a new room ${roomId}, and is assigned white: ${games[roomId].players[0].is_white}`);
         socket.emit("roomCreated", { roomId, message: "Room created. Waiting for opponent..." });
         return;
 
@@ -36,7 +37,6 @@ module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => 
         console.log(`User ${socket.id} is trying to join a full room: ${roomId}`)
         socket.emit("roomJoinError", { reason: "ROOM_FULL", message: "Room is full." });
         return;
-
     };
 
     // let's pair them for a game!
@@ -45,13 +45,13 @@ module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => 
         is_white: !room.players[0].is_white,
         bombs: [],
         elo: 1500, // TODO: replace with real elo once profiles feature implemented
-        seconds_left: secsToPlay
     });
+    console.log(`Player ${room.players[1].user_id} is white: ${room.players[1].is_white}.`)
 
     // different starting positions to test with!
-    const twoRooksOneKing = "8/8/8/8/8/8/4k3/K2R4 w - - 0 1";
+    // const twoRooksOneKing = "8/8/8/8/8/8/4k3/K2R4 w - - 0 1";
 
-    room.game = new Chess(twoRooksOneKing);
+    room.game = new Chess();
     room.game_state = GAME_STATES.placing_bombs;
     room.time_control = secsToPlay;
 
@@ -60,9 +60,22 @@ module.exports = (socket, io, games, activePlayers, redis) => async (roomId) => 
     console.log(`User ${socket.id} is matched, joining room ${roomId}`);
 
     // start timer - 1 minute to place bombs
-    // const secsToPlaceBomb = 60;
-    const secsToPlaceBomb = 30;
-    await redis.set(`bomb_timer:${roomId}`, "", { ex: secsToPlaceBomb });
+    const secsToPlaceBomb = 60;
+    // await redis.set(`bomb_timer:${roomId}`, "", { ex: secsToPlaceBomb });
+
+    // technically, don't need to assign the bomb_timer to the room but for now we will
+    room.bomb_timer = new CountdownTimer(secsToPlaceBomb, () => {
+        if (room && room.game_state === GAME_STATES.placing_bombs) {
+            // someone hasn't finished placing bombs yet! so we place them for them, and start the game!
+            [whitePlayerBombs, blackPlayerBombs] = randomlyFillBombs(room);
+            io.to(roomId).emit("startPlay", { whitePlayerBombs, blackPlayerBombs });
+            room.game_state = GAME_STATES.playing;
+        } else {
+            console.log(`Bomb timer for ${roomId} went off, but either game ended or everyone already placed bombs.`);
+        }
+    });
+    room.bomb_timer.start();
+
     console.log(`Set a bomb timer for room ${roomId}`);
 
     io.to(roomId).emit("roomJoined", {

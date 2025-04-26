@@ -1,12 +1,12 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const { Redis } = require("@upstash/redis");    // for normal redis commands
-const IORedis = require("ioredis");             // for pub sub
+// const { Redis } = require("@upstash/redis");    // for normal redis commands
+// const IORedis = require("ioredis");             // for pub sub
 const dotenv = require("dotenv");
 
 const registerGameHandlers = require("./socket/registerGameHandlers");
-const handleRedisExpiration = require("./redis/redisExpirationHandler");
+// const handleRedisExpiration = require("./redis/redisExpirationHandler");
 
 dotenv.config();
 
@@ -20,15 +20,15 @@ const io = new Server(server, {
 // for now, we use redis just for timeout detection (redis key expiry)
 // my redis already has expiration notifications enabled (Ex flag: E = Keyevent, x = expired events)
 // note: this redis REST client is for setting and reading keys (game logic)
-const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN
-});
+// const redis = new Redis({
+//     url: process.env.UPSTASH_REDIS_REST_URL,
+//     token: process.env.UPSTASH_REDIS_REST_TOKEN
+// });
 
-// note: this io redis is for subscribing to key expiration events
-const redisSubscriber = new IORedis(process.env.UPSTASH_REDIS_URL, {
-    tls: {}  // required for Upstash TLS connection
-});
+// // note: this io redis is for subscribing to key expiration events
+// const redisSubscriber = new IORedis(process.env.UPSTASH_REDIS_URL, {
+//     tls: {}  // required for Upstash TLS connection
+// });
 
 // TODO: migrate these to a redis hset
 /* 
@@ -47,7 +47,7 @@ const redisSubscriber = new IORedis(process.env.UPSTASH_REDIS_URL, {
                 is_white: boolean,
                 bombs: [],
                 elo: int,
-                seconds_left: int
+                timer: countDownTimer
             }
         ]
         game: Chess object,
@@ -55,21 +55,21 @@ const redisSubscriber = new IORedis(process.env.UPSTASH_REDIS_URL, {
         time_control: int (number of seconds)
     }
 */
-const games = {};
+const rooms = {};
 
 // key: socket id, val: room id assigned
 const activePlayers = {};    // includes people playing and people in the queue
 
 // 🔔 Subscribe to key expiration events
-redisSubscriber.psubscribe("__keyevent@0__:expired", (err, _count) => {
-    if (err) console.error("Subscription error:", err);
-});
+// redisSubscriber.psubscribe("__keyevent@0__:expired", (err, _count) => {
+//     if (err) console.error("Subscription error:", err);
+// });
 
-redisSubscriber.on("pmessage", handleRedisExpiration(io, redis, games, activePlayers));
+// redisSubscriber.on("pmessage", handleRedisExpiration(io, redis, games, activePlayers));
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-    registerGameHandlers(socket, io, games, activePlayers, redis);
+    registerGameHandlers(socket, io, rooms, activePlayers);
 });
 
 module.exports = { server };

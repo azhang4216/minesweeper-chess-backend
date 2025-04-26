@@ -19,11 +19,11 @@ function eloRatingChange(whiteRating, blackRating, outcome, K=30) {
     let whiteProbability = probability(blackRating, whiteRating);
 
     // Calculate the elo changes accordingly
-    whiteRatingChange = Math.round(K * (outcome - whiteProbability));
-    blackRatingChange = Math.round(K * ((1 - outcome) - blackProbability));
+    const whiteRatingChange = Math.round(K * (outcome - whiteProbability));
+    const blackRatingChange = Math.round(K * ((1 - outcome) - blackProbability));
 
     // Round to nearest whole number
     return [whiteRatingChange, blackRatingChange];
 };
 
-module.exports = { eloRatingChange };
+module.exports = eloRatingChange;

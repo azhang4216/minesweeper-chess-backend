@@ -1,4 +1,4 @@
-module.exports = (socket, io, games, activePlayers, redis) => async () => {
+module.exports = (socket, io, games, activePlayers) => () => {
     console.log("User disconnected:", socket.id);
 
     const roomId = activePlayers[socket.id];
@@ -13,19 +13,19 @@ module.exports = (socket, io, games, activePlayers, redis) => async () => {
     });
 
     // get rid of all associated keys
-    const valOfBombTimerInRoom = await redis.getdel(`bomb_timer:${roomId}`);
-    const valOfWTimerInRoom = await redis.getdel(`player_timer:${roomId}:white`);
-    const valOfBTimerInRoom = await redis.getdel(`player_timer:${roomId}:black`);
+    // const valOfBombTimerInRoom = await redis.getdel(`bomb_timer:${roomId}`);
+    // const valOfWTimerInRoom = await redis.getdel(`player_timer:${roomId}:white`);
+    // const valOfBTimerInRoom = await redis.getdel(`player_timer:${roomId}:black`);
 
-    if (valOfBombTimerInRoom === "") {
-        console.log(`Removed the active bomb timer expiry key from room ${roomId}`);
-    };
-    if (valOfWTimerInRoom === "") {
-        console.log(`Removed the active white timer expiry key from room ${roomId}`);
-    };
-    if (valOfBTimerInRoom === "") {
-        console.log(`Removed the active black timer expiry key from room ${roomId}`);
-    };
+    // if (valOfBombTimerInRoom === "") {
+    //     console.log(`Removed the active bomb timer expiry key from room ${roomId}`);
+    // };
+    // if (valOfWTimerInRoom === "") {
+    //     console.log(`Removed the active white timer expiry key from room ${roomId}`);
+    // };
+    // if (valOfBTimerInRoom === "") {
+    //     console.log(`Removed the active black timer expiry key from room ${roomId}`);
+    // };
 
     // TODO: persistent game recording in DB
     delete games[roomId];
