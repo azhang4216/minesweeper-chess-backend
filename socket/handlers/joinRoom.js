@@ -37,6 +37,9 @@ module.exports = (socket, io, games, activePlayers) => (roomId) => {
         console.log(`User ${socket.id} is trying to join a full room: ${roomId}`)
         socket.emit("roomJoinError", { reason: "ROOM_FULL", message: "Room is full." });
         return;
+    } else if (room.players && socket.id === room.players[0].user_id) {
+        // for some reason, double registered the same player
+        console.log(`User ${socket.id} is already in room ${roomId}...`);
     };
 
     // let's pair them for a game!
