@@ -7,7 +7,8 @@ module.exports = (socket, io, games, activePlayers) => (roomId) => {
     const room = games[roomId];
 
     // TODO: implement other time controls
-    const secsToPlay = 300; // 5 minutes
+    // const secsToPlay = 300; // 5 minutes
+    const secsToPlay = 30;
 
     if (!room) {
         // create a new room
@@ -53,7 +54,7 @@ module.exports = (socket, io, games, activePlayers) => (roomId) => {
 
     // different starting positions to test with!
     // const twoRooksOneKing = "8/8/8/8/8/8/4k3/K2R4 w - - 0 1";
-    const customFen = "6kq/8/8/6r1/K7/6r1/2N5/1Q6 w - - 0 1";
+    const customFen = "6k1/8/4q3/6r1/1K6/6r1/8/8 w - - 0 1";
 
     room.game = new Chess(customFen);
     room.game_state = GAME_STATES.placing_bombs;
