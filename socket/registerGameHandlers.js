@@ -4,6 +4,7 @@ const joinRoom = require("./handlers/joinRoom");
 const placeBomb = require("./handlers/placeBomb");
 const makeMove = require("./handlers/makeMove");
 const disconnect = require("./handlers/disconnect");
+const requestRoomsLookingForMatch = require("./handlers/requestRoomsLookingForMatch");
 
 module.exports = function registerGameHandlers(socket, io, rooms, activePlayersrooms) {
     socket.on("joinRoom", joinRoom(socket, io, rooms, activePlayersrooms));
@@ -13,4 +14,5 @@ module.exports = function registerGameHandlers(socket, io, rooms, activePlayersr
     socket.on("playerDisconnect", disconnect(socket, io, rooms, activePlayersrooms));
     socket.on("cancelRoom", cancelRoom(socket, io, rooms, activePlayersrooms));
     socket.on("createRoom", createRoom(socket, io, rooms, activePlayersrooms));
+    socket.on("requestRoomsLookingForMatch", requestRoomsLookingForMatch(socket, rooms));
 };

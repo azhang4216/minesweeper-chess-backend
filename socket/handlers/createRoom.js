@@ -40,7 +40,7 @@ module.exports = (socket, io, games, activePlayers) => ({roomId, timeControl}, c
 
     socket.join(roomId);
     console.log(`User ${socket.id} started a new room ${roomId}, and is assigned white: ${games[roomId].players[0].is_white}`);
-    // socket.emit("roomCreated", { roomId, message: "Room created. Waiting for opponent..." });
+    
     return callback({
         success: true,
         message: "Room created. Waiting for opponent..."
