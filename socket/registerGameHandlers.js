@@ -6,13 +6,13 @@ const makeMove = require("./handlers/makeMove");
 const disconnect = require("./handlers/disconnect");
 const requestRoomsLookingForMatch = require("./handlers/requestRoomsLookingForMatch");
 
-module.exports = function registerGameHandlers(socket, io, rooms, activePlayersrooms) {
-    socket.on("joinRoom", joinRoom(socket, io, rooms, activePlayersrooms));
-    socket.on("placeBomb", placeBomb(socket, io, rooms, activePlayersrooms));
-    socket.on("makeMove", makeMove(socket, io, rooms, activePlayersrooms));
-    socket.on("disconnect", disconnect(socket, io, rooms, activePlayersrooms));
-    socket.on("playerDisconnect", disconnect(socket, io, rooms, activePlayersrooms));
-    socket.on("cancelRoom", cancelRoom(socket, io, rooms, activePlayersrooms));
-    socket.on("createRoom", createRoom(socket, io, rooms, activePlayersrooms));
-    socket.on("requestRoomsLookingForMatch", requestRoomsLookingForMatch(socket, rooms));
+module.exports = function registerGameHandlers(socket, io, redis) {
+    socket.on("joinRoom", joinRoom(socket, io, redis));
+    socket.on("placeBomb", placeBomb(socket, io, redis));
+    socket.on("makeMove", makeMove(socket, io, redis));
+    socket.on("disconnect", disconnect(socket, io, redis));
+    socket.on("playerDisconnect", disconnect(socket, io, redis));
+    socket.on("cancelRoom", cancelRoom(socket, redis));
+    socket.on("createRoom", createRoom(socket, redis));
+    socket.on("requestRoomsLookingForMatch", requestRoomsLookingForMatch(redis));
 };

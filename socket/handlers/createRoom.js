@@ -1,9 +1,15 @@
+import { 
+    roomExists,
+    setRoom,
+    setActivePlayer
+} from "../../redis";
 const { GAME_STATES } = require("../gameStates");
 
-module.exports = (socket, io, games, activePlayers) => ({roomId, timeControl}, callback) => {
+module.exports = (socket, redis) => async ({roomId, timeControl}, callback) => {
     console.log(`User ${socket.id} is trying to create room ${roomId} with ${timeControl} second time control.`);
 
-    if (roomId in games) {
+    const roomIdIsInRooms = await roomExists(redis, roomId);
+    if (roomIdIsInRooms) {
         return callback({
             success: false,
             message: "Room ID already exists. Please choose a different one."
@@ -21,7 +27,7 @@ module.exports = (socket, io, games, activePlayers) => ({roomId, timeControl}, c
     }
 
     // valid room creation request: let's create a new room!
-    games[roomId] = {
+    await setRoom(redis, roomId, {
         players: [
             {
                 // TODO: replace id when authentication done for persistence
@@ -34,12 +40,12 @@ module.exports = (socket, io, games, activePlayers) => ({roomId, timeControl}, c
         ],
         game_state: GAME_STATES.matching,
         time_control: secsToPlay
-    };
+    });
 
-    activePlayers[socket.id] = roomId;
+    setActivePlayer(redis, socket.id, roomId);
 
     socket.join(roomId);
-    console.log(`User ${socket.id} started a new room ${roomId}, and is assigned white: ${games[roomId].players[0].is_white}`);
+    console.log(`User ${socket.id} started a new room ${roomId}.`);
     
     return callback({
         success: true,

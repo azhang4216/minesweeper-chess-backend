@@ -24,16 +24,15 @@ Socket.IO + Node.js + Express server powering the multiplayer logic for Mineswee
 
 - Express server for base HTTP and API routes
 - Socket.IO for multiplayer connections
-- Game instances maintained per room in memory
-- Optional Redis for scaling and queueing
-- Optional PostgreSQL for long-term persistence
+- Game instances maintained per room in Redis for scaling
+- PostgreSQL for long-term persistence
 
 ## 📦 Setup
 
 ### Prerequisites
 
 - Node.js (v16+)
-- Redis and PostgreSQL (optional for now)
+- Redis and PostgreSQL
 
 ### Installation
 

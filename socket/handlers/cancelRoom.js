@@ -1,9 +1,14 @@
-const { GAME_STATES } = require("../gameStates");
+import { 
+    getRoom, 
+    deleteRoom,
+    getActivePlayer,
+    removeActivePlayer
+} from "../../redis";
 
-module.exports = (socket, io, games, activePlayers) => ({ roomId }, callback) => {
+module.exports = (socket, redis) => async ({ roomId }, callback) => {
     console.log(`User ${socket.id} is trying to cancel room ID: ${roomId}.`);
 
-    const roomIdThisPlayerHas = activePlayers[socket.id];
+    const roomIdThisPlayerHas = await getActivePlayer(redis, socket.id);
     if (!roomIdThisPlayerHas || roomIdThisPlayerHas !== roomId) {
         // shouldn't happen, but check just in case
         return callback({
@@ -12,7 +17,7 @@ module.exports = (socket, io, games, activePlayers) => ({ roomId }, callback) =>
         });
     }
 
-    const room = games[roomId];
+    const room = await getRoom(redis, roomId);
     if (!room) {
         return callback({
             success: false,
@@ -20,15 +25,12 @@ module.exports = (socket, io, games, activePlayers) => ({ roomId }, callback) =>
         });
     }
 
-    games[roomId]["players"].forEach((player, _index, _array) => {
-        delete activePlayers[player.user_id];
+    room["players"].forEach(async (player) => {
+        await removeActivePlayer(redis, player.user_id)
         console.log(`Removed player ${player.user_id}, room ${roomId}, from active players.`);
     });
 
-    delete games[roomId];
-
-    console.log(`Active games: ${JSON.stringify(games)}`);
-    console.log(`Active players: ${JSON.stringify(activePlayers)}`);
+    await deleteRoom(redis, roomId);
 
     return callback({
         success: true,

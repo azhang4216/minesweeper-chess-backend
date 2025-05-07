@@ -8,6 +8,13 @@ const {
     // KNIGHT,
     // PAWN, 
 } = require("chess.js");
+
+import {
+    getRoom,
+    getActivePlayer,
+    setRoom
+} from "../../redis";
+
 const { GAME_STATES } = require("../gameStates");
 const { calculateElo, CountdownTimer } = require("../../helpers");
 
@@ -47,11 +54,11 @@ const { calculateElo, CountdownTimer } = require("../../helpers");
 // };
 
 
-module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {
-    const roomId = activePlayers[socket.id];
+module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
+    const roomId = await getActivePlayer(redis, socket.id);
     if (!roomId) return;
 
-    const room = games[roomId];
+    let room = await getRoom(redis, roomId);
     if (!room) return;
 
     console.log(`${socket.id} trying to make move: ${from} to ${to}.`);
@@ -266,6 +273,10 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
             // only need to broadcast to person who made invalid move
             socket.emit("invalidMove");
         }
+
+        // update the actual room item in our redis with the new state we have
+        await setRoom(redis, roomId, room);
+        console.log(`Updated our redis with new room ${roomId} data`);
     } else {
         console.log(`Room ${roomId}, player ${socket.id}: cannot move pieces when not in a playing game state.`);
     }

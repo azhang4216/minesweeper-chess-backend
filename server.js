@@ -1,8 +1,7 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-// const { Redis } = require("@upstash/redis");    // for normal redis commands
-// const IORedis = require("ioredis");             // for pub sub
+const { Redis } = require("@upstash/redis");
 const dotenv = require("dotenv");
 
 const registerGameHandlers = require("./socket/registerGameHandlers");
@@ -17,18 +16,11 @@ const io = new Server(server, {
     cors: { origin: "*" },
 });
 
-// for now, we use redis just for timeout detection (redis key expiry)
-// my redis already has expiration notifications enabled (Ex flag: E = Keyevent, x = expired events)
 // note: this redis REST client is for setting and reading keys (game logic)
-// const redis = new Redis({
-//     url: process.env.UPSTASH_REDIS_REST_URL,
-//     token: process.env.UPSTASH_REDIS_REST_TOKEN
-// });
-
-// // note: this io redis is for subscribing to key expiration events
-// const redisSubscriber = new IORedis(process.env.UPSTASH_REDIS_URL, {
-//     tls: {}  // required for Upstash TLS connection
-// });
+const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN
+});
 
 // TODO: migrate these to a redis hset
 /* 
@@ -69,7 +61,7 @@ const activePlayers = {};    // includes people playing and people in the queue
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-    registerGameHandlers(socket, io, rooms, activePlayers);
+    registerGameHandlers(socket, io, redis);
 });
 
 module.exports = { server };
