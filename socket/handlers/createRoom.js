@@ -1,8 +1,8 @@
-import { 
+const { 
     roomExists,
     setRoom,
     setActivePlayer
-} from "../../redis";
+} = require("../../redis");
 const { GAME_STATES } = require("../gameStates");
 
 module.exports = (socket, redis) => async ({roomId, timeControl}, callback) => {

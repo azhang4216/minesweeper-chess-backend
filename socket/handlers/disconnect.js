@@ -1,7 +1,9 @@
-import {
+const {
     getActivePlayer,
-    getRoom
-} from "../../redis";
+    getRoom,
+    deleteRoom,
+    removeActivePlayer
+} = require("../../redis");
 
 module.exports = (socket, io, redis) => async () => {
     console.log("User disconnected:", socket.id);

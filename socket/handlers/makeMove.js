@@ -1,5 +1,5 @@
 const {
-    // Chess,
+    Chess,
     // Piece,
     WHITE,
     BLACK,
@@ -9,11 +9,13 @@ const {
     // PAWN, 
 } = require("chess.js");
 
-import {
+const {
     getRoom,
+    getRoomField,
     getActivePlayer,
-    setRoom
-} from "../../redis";
+    setRoom,
+    updateRoomField
+} = require("../../redis");
 
 const { GAME_STATES } = require("../gameStates");
 const { calculateElo, CountdownTimer } = require("../../helpers");
@@ -63,11 +65,20 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
 
     console.log(`${socket.id} trying to make move: ${from} to ${to}.`);
 
-    if (room.game_state === GAME_STATES.playing) {
+    const gameState = room["game_state"];
+
+    if (gameState === GAME_STATES.playing) {
+        const gamePgn = await getRoomField(redis, roomId, "game");
+
+        const chess = new Chess();
+        if (gamePgn !== "") {
+            chess.loadPgn(gamePgn);
+        } 
+
         let move = null;
 
         try {
-            move = room.game.move({ from, to, promotion });
+            move = chess.move({ from, to, promotion });
         } catch (_e) {
             console.log("tried to make illegal move");
             return;
@@ -77,8 +88,8 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
         if (!("timer" in room.players[0])) {
             // we need to set timers and start them for our players!
             room.players.forEach((player) => {
-                player.timer = new CountdownTimer(room.time_control, () => {
-                    if (room.game_state === GAME_STATES.playing) {
+                player.timer = new CountdownTimer(room.time_control, async () => {
+                    if (gameState === GAME_STATES.playing) {
                         const winnerColor = player.is_white ? "b" : "w";
                         const [whiteEloChange, blackEloChange] = calculateElo(
                             (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
@@ -86,14 +97,14 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
                             (winnerColor === "w") ? 1 : 0,
                         );
 
-                        room.game_state = GAME_STATES.game_over;
-
                         io.to(roomId).emit("winLossGameOver", {
                             winner: winnerColor,
                             by: "timeout",
                             whiteEloChange,
                             blackEloChange,
                         });
+
+                        await updateRoomField(redis, roomId, "game_state", GAME_STATES.game_over);
 
                         console.log(`Room ${roomId}: ${winnerColor} wins by timeout.`);
                     } else {
@@ -104,13 +115,14 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
             });
         }
 
-        const preExplosionFen = room.game.fen();  // for explosion animation purposes
+        const preExplosionFen = chess.fen();  // for explosion animation purposes
 
         const indexOfPlayerWhoJustMoved = (room.players[0].user_id === socket.id) ? 0 : 1;
         const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].is_white;
 
         // stop the timer of the person who just moved
-        room.players[indexOfPlayerWhoJustMoved].timer.pause();
+        // TODO: remove, doesn't work
+        // room.players[indexOfPlayerWhoJustMoved].timer.pause();
 
         // run timer logic in parallel for less delay - no need to wait for it to finish before moving on
         // handleTimerLogic(io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved);
@@ -131,8 +143,8 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
                 player.bombs = player.bombs.filter(bomb => bomb !== to);
 
                 // remove the piece that set off that bomb
-                room.game.remove(to);
-            } else if (room.game.inCheck?.()) {
+                chess.remove(to);
+            } else if (chess.inCheck?.()) {
                 specialMove = "in check";
             } else if (move.isCapture?.() || move.isEnPassant?.()) {
                 specialMove = "capture";
@@ -144,15 +156,15 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
 
             // broadcast to both players this move
             io.to(roomId).emit("gameState", {
-                gameFen: room.game.fen(),
+                gameFen: chess.fen(),
                 moveSan: move.san + (specialMove && specialMove.startsWith("explode") ? "💣💥" : ""),
                 specialMove,
-                sideToMoveNext: room.game.turn(),
+                sideToMoveNext: chess.turn(),
                 preExplosionFen   // different from gameFen only if explosion happened
             });
 
-            const isWhiteKingMissing = room.game.findPiece({ type: KING, color: WHITE }).length == 0;
-            const isBlackKingMissing = room.game.findPiece({ type: KING, color: BLACK }).length == 0;
+            const isWhiteKingMissing = chess.findPiece({ type: KING, color: WHITE }).length == 0;
+            const isBlackKingMissing = chess.findPiece({ type: KING, color: BLACK }).length == 0;
 
             console.log(`White king is missing: ${isWhiteKingMissing}`);
             console.log(`Black king is missing: ${isBlackKingMissing}`);
@@ -175,7 +187,7 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
                         (winnerColor === "w") ? 1 : 0,
                     );
 
-                    room.game_state = GAME_STATES.game_over;
+                    await updateRoomField(redis, roomId, "game_state", GAME_STATES.game_over);
 
                     console.log(`Room ${roomId} ended by king exploding. ${winnerColor} won.`);
 
@@ -185,7 +197,7 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
                         whiteEloChange,
                         blackEloChange,
                     });
-                } else if (room.game.isInsufficientMaterial()) {
+                } else if (chess.isInsufficientMaterial()) {
                     console.log("Draw by insufficient material (blew up)");
                     // case 2. a non-king piece stepped into a bomb => draw by insufficient material
                     // note: documentation checks piece by piece so exploded bomb shouldn't affect it
@@ -195,7 +207,8 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
                         0.5
                     );
 
-                    room.game_state = GAME_STATES.game_over;
+                    // chess_state = GAME_STATES.game_over;
+                    await updateRoomField(redis, roomId, "game_state", GAME_STATES.game_over);
 
                     io.to(roomId).emit("drawGameOver", {
                         by: "insufficient material (a piece exploded!)",
@@ -211,7 +224,8 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
                     (winnerColor === "w") ? 1 : 0,
                 );
 
-                room.game_state = GAME_STATES.game_over;
+                // room.game_state = GAME_STATES.game_over;
+                await updateRoomField(redis, roomId, "game_state", GAME_STATES.game_over);
 
                 io.to(roomId).emit("winLossGameOver", {
                     winner: winnerColor,
@@ -219,9 +233,9 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
                     whiteEloChange,
                     blackEloChange,
                 });
-            } else if (room.game.isGameOver()) {
+            } else if (chess.isGameOver()) {
                 // a "usual" game over, so no "null" references
-                if (room.game.isDraw?.()) {
+                if (chess.isDraw?.()) {
                     const [whiteEloChange, blackEloChange] = calculateElo(
                         (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
                         (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
@@ -229,10 +243,10 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
                     );
 
                     io.to(roomId).emit("drawGameOver", {
-                        by: room.game.isDrawByFiftyMoves?.() && "50-move rule" ||
-                            room.game.isThreefoldRepetition?.() && "threefold repetition" ||
-                            room.game.isInsufficientMaterial?.() && "insufficient material" ||
-                            room.game.isStalemate?.() && "stalemate" ||
+                        by: chess.isDrawByFiftyMoves?.() && "50-move rule" ||
+                            chess.isThreefoldRepetition?.() && "threefold repetition" ||
+                            chess.isInsufficientMaterial?.() && "insufficient material" ||
+                            chess.isStalemate?.() && "stalemate" ||
                             null, // technically, should never be null
                         whiteEloChange,
                         blackEloChange,
@@ -255,11 +269,12 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
                     });
                 };
 
-                room.game_state = GAME_STATES.game_over;
+                // room.game_state = GAME_STATES.game_over;
+                await updateRoomField(redis, roomId, "game_state", GAME_STATES.game_over);
             };
 
             // start the timer of the person who is about to move, but only if game is not over
-            // if (room.game_state === GAME_STATES.playing) {
+            // if (chess_state === GAME_STATES.playing) {
             const indexOfPlayerAboutToMove = indexOfPlayerWhoJustMoved === 1 ? 0 : 1;
             room.players[indexOfPlayerAboutToMove].timer.start();
 

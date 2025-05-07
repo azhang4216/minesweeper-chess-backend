@@ -1,9 +1,9 @@
-import { 
+const { 
     getRoom, 
     deleteRoom,
     getActivePlayer,
     removeActivePlayer
-} from "../../redis";
+} = require("../../redis");
 
 module.exports = (socket, redis) => async ({ roomId }, callback) => {
     console.log(`User ${socket.id} is trying to cancel room ID: ${roomId}.`);

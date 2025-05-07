@@ -1,4 +1,4 @@
-import { getRoomSummariesByGameState } from "../../redis";
+const { getRoomSummariesByGameState } = require("../../redis");
 
 const { GAME_STATES } = require("../gameStates");
 // const util = require('util')

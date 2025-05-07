@@ -1,12 +1,14 @@
-const { Chess } = require("chess.js");
+// const { Chess } = require("chess.js");
 const { GAME_STATES } = require("../gameStates");
 const { CountdownTimer, randomlyFillBombs } = require("../../helpers");
-import {
+const {
     addPlayerToRoom,
     getRoom,
     updateRoomField,
-    setActivePlayer
-} from "../../redis";
+    setActivePlayer,
+    getActivePlayer,
+    deleteRoom
+} = require("../../redis");
 
 module.exports = (socket, io, redis) => async (roomId, callback) => {
     console.log(`User ${socket.id} is trying to join room ${roomId}...`);
@@ -28,22 +30,35 @@ module.exports = (socket, io, redis) => async (roomId, callback) => {
     } else if (room.players && socket.id === room.players[0].user_id) {
         // for some reason, double registered the same player
         console.log(`User ${socket.id} is already in room ${roomId}...`);
-    };
+    } 
+    
+    const opponentRoomId = await getActivePlayer(redis, room.players[0].user_id);
+    if (opponentRoomId === null || opponentRoomId !== roomId) {
+        // the person that started the room is no longer actively online
+        // we have to delete it 
+        await deleteRoom(redis, roomId);
+
+        return callback({
+            success: false,
+            message: "Room has been cancelled. Please try another room."
+        });
+    }
 
     // everything checks out - let's pair them for a game!
-    const players = await addPlayerToRoom(redis, room, {
+    const players = await addPlayerToRoom(redis, roomId, {
         user_id: socket.id,
         is_white: !room.players[0].is_white,
         bombs: [],
         elo: 1500, // TODO: replace with real elo once profiles feature implemented
     });
+    console.log(`Players: ${players}`);
 
     // different starting positions to test with!
     // const twoRooksOneKing = "8/8/8/8/8/8/4k3/K2R4 w - - 0 1";
     // const customFen = "6k1/8/4q3/6r1/1K6/6r1/8/8 w - - 0 1";
-    const roomGame = new Chess();
+    const gamePgn = "";
 
-    await updateRoomField(redis, roomId, "game", roomGame);
+    await updateRoomField(redis, roomId, "game", gamePgn);
     await updateRoomField(redis, roomId, "game_state", GAME_STATES.placing_bombs);
 
     socket.join(roomId);
@@ -72,7 +87,7 @@ module.exports = (socket, io, redis) => async (roomId, callback) => {
         roomId,
         message: "Both players joined. Game can start!",
         players,
-        fen: roomGame.fen(),
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", // indicate it's a new game
         secsToPlaceBomb,
         secsToPlay: room.time_control,
     });
