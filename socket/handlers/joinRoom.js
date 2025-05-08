@@ -83,6 +83,20 @@ module.exports = (socket, io, redis) => async (roomId, callback) => {
     bombTimer.start();
     console.log(`Set a bomb timer for room ${roomId}`);
 
+    await timeoutQueue.add(
+        "test-timeout",
+        {
+            roomId: "testRoomID",
+            playerId: "testPlayerID"
+        },
+        {
+            delay: 10_000, // 10 seconds
+            removeOnComplete: true,
+            removeOnFail: true,
+            jobId: `testJobID`,
+        }
+    );
+
     io.to(roomId).emit("roomJoined", {
         roomId,
         message: "Both players joined. Game can start!",

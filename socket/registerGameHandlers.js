@@ -6,10 +6,10 @@ const makeMove = require("./handlers/makeMove");
 const disconnect = require("./handlers/disconnect");
 const requestRoomsLookingForMatch = require("./handlers/requestRoomsLookingForMatch");
 
-module.exports = function registerGameHandlers(socket, io, redis) {
+module.exports = function registerGameHandlers(socket, io, redis, timeoutQueue) {
     socket.on("joinRoom", joinRoom(socket, io, redis));
-    socket.on("placeBomb", placeBomb(socket, io, redis));
-    socket.on("makeMove", makeMove(socket, io, redis));
+    socket.on("placeBomb", placeBomb(socket, io, redis, timeoutQueue));
+    socket.on("makeMove", makeMove(socket, io, redis, timeoutQueue));
     socket.on("disconnect", disconnect(socket, io, redis));
     socket.on("playerDisconnect", disconnect(socket, io, redis));
     socket.on("cancelRoom", cancelRoom(socket, redis));

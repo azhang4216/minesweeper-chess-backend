@@ -20,43 +20,7 @@ const {
 const { GAME_STATES } = require("../gameStates");
 const { calculateElo, CountdownTimer } = require("../../helpers");
 
-// const handleTimerLogic = async (io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved) => {
-//     const timerKeyOfPlayerWhoJustMoved = `player_timer:${roomId}:${isPlayerWhoJustMovedWhite ? "white" : "black"}`;
-
-//     // since this player made their move, we first stop their clock and check how much time they have left
-//     const timeLeftForPlayerWhoJustMoved = await redis.ttl(timerKeyOfPlayerWhoJustMoved);
-//     room.players[indexOfPlayerWhoJustMoved].seconds_left = timeLeftForPlayerWhoJustMoved;
-
-//     // this player doesn't need to time out => remove their timeout key
-//     const valOfTimerKeyOfPlayerWhoJustMoved = await redis.getdel(timerKeyOfPlayerWhoJustMoved); 
-//     if (valOfTimerKeyOfPlayerWhoJustMoved === "") {
-//         console.log(`Successfully deleted key ${timerKeyOfPlayerWhoJustMoved}`);
-//     } else {
-//         console.log(`Could not find key ${timerKeyOfPlayerWhoJustMoved}`);
-//     };
-
-//     console.log(`There is ${timeLeftForPlayerWhoJustMoved} seconds left for the player who just moved in room ${roomId}.`);
-
-//     // now, after server logic, we start the next player's timer
-//     const timerKeyOfPlayerAboutToMove = `player_timer:${roomId}:${isPlayerWhoJustMovedWhite ? "black" : "white"}`;
-//     const timeLeftForPlayerAboutToMove = room.players[indexOfPlayerWhoJustMoved === 0 ? 1 : 0].seconds_left;
-//     console.log(`There is ${timeLeftForPlayerAboutToMove} seconds left for the player about to move in room ${roomId}.`);
-
-//     if (timeLeftForPlayerAboutToMove > 0) {
-//         await redis.set(timerKeyOfPlayerAboutToMove, "", { ex: timeLeftForPlayerAboutToMove });
-//     } else {
-//         console.log(`Cannot set a non-positive ttl for room ${roomId}`);
-//     };
-
-//     // tell the connected sockets about our updated times for syncing!
-//     io.to(roomId).emit("syncTime", {
-//         whiteTimeLeft: isPlayerWhoJustMovedWhite ? timeLeftForPlayerWhoJustMoved : timeLeftForPlayerAboutToMove,
-//         blackTimeLeft: isPlayerWhoJustMovedWhite ? timeLeftForPlayerAboutToMove : timeLeftForPlayerWhoJustMoved
-//     });
-// };
-
-
-module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
+module.exports = (socket, io, redis, timeoutQueue) => async ({ from, to, promotion }) => {
     const roomId = await getActivePlayer(redis, socket.id);
     if (!roomId) return;
 
@@ -73,7 +37,7 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
         const chess = new Chess();
         if (gamePgn !== "") {
             chess.loadPgn(gamePgn);
-        } 
+        }
 
         let move = null;
 
@@ -84,41 +48,60 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
             return;
         }
 
-        // now that we know it's a valid move, let's see if the timer has started
-        if (!("timer" in room.players[0])) {
-            // we need to set timers and start them for our players!
-            room.players.forEach((player) => {
-                player.timer = new CountdownTimer(room.time_control, async () => {
-                    if (gameState === GAME_STATES.playing) {
-                        const winnerColor = player.is_white ? "b" : "w";
-                        const [whiteEloChange, blackEloChange] = calculateElo(
-                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
-                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
-                            (winnerColor === "w") ? 1 : 0,
-                        );
-
-                        io.to(roomId).emit("winLossGameOver", {
-                            winner: winnerColor,
-                            by: "timeout",
-                            whiteEloChange,
-                            blackEloChange,
-                        });
-
-                        await updateRoomField(redis, roomId, "game_state", GAME_STATES.game_over);
-
-                        console.log(`Room ${roomId}: ${winnerColor} wins by timeout.`);
-                    } else {
-                        console.log(`Room ${roomId}: player timer went off, but game is no longer being played.`);
-                    }
-
-                });
-            });
-        }
-
-        const preExplosionFen = chess.fen();  // for explosion animation purposes
-
         const indexOfPlayerWhoJustMoved = (room.players[0].user_id === socket.id) ? 0 : 1;
         const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].is_white;
+
+        // now that we know it's a valid move, let's stop the clock
+        // there's only a background job IF the first move has been made => last_move_time exists
+
+        if ("last_move_time" in room) {
+            // not the first move of the game, so this job should exist
+            // get rid of the timeout job for the player who just moved
+            const jobId = `${roomId}-game-${isPlayerWhoJustMovedWhite ? "white" : "black"}`;
+
+            try {
+                await timeoutQueue.remove(jobId);
+            } catch (err) {
+                console.warn(`No timeout job found for ${jobId}`);
+            }
+        }
+
+        // no need to await 
+        updateRoomField(redis, roomId, "player_index_to_move", indexOfPlayerWhoJustMoved === 0 ? 1 : 0);
+        updateRoomField(redis, roomId, "last_move_time", new Date().toISOString());
+
+        // now that we know it's a valid move, let's see if the timer has started
+        // if (!("timer" in room.players[0])) {
+        //     // we need to set timers and start them for our players!
+        //     room.players.forEach((player) => {
+        //         player.timer = new CountdownTimer(room.time_control, async () => {
+        //             if (gameState === GAME_STATES.playing) {
+        //                 const winnerColor = player.is_white ? "b" : "w";
+        //                 const [whiteEloChange, blackEloChange] = calculateElo(
+        //                     (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
+        //                     (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+        //                     (winnerColor === "w") ? 1 : 0,
+        //                 );
+
+        //                 io.to(roomId).emit("winLossGameOver", {
+        //                     winner: winnerColor,
+        //                     by: "timeout",
+        //                     whiteEloChange,
+        //                     blackEloChange,
+        //                 });
+
+        //                 await updateRoomField(redis, roomId, "game_state", GAME_STATES.game_over);
+
+        //                 console.log(`Room ${roomId}: ${winnerColor} wins by timeout.`);
+        //             } else {
+        //                 console.log(`Room ${roomId}: player timer went off, but game is no longer being played.`);
+        //             }
+
+        //         });
+        //     });
+        // }
+
+        const preExplosionFen = chess.fen();  // for explosion animation purposes
 
         // stop the timer of the person who just moved
         // TODO: remove, doesn't work
@@ -292,6 +275,20 @@ module.exports = (socket, io, redis) => async ({ from, to, promotion }) => {
         // update the actual room item in our redis with the new state we have
         await setRoom(redis, roomId, room);
         console.log(`Updated our redis with new room ${roomId} data`);
+
+        await timeoutQueue.add(
+            "player-timeout",
+            {
+                roomId,
+                playerId: indexOfPlayerWhoJustMoved === 0 ? 1 : 0
+            },
+            {
+                delay: 30_000, // 30 seconds
+                removeOnComplete: true,
+                removeOnFail: true,
+                jobId: `${currentGameId}-${playerColor}`,
+            }
+        );
     } else {
         console.log(`Room ${roomId}, player ${socket.id}: cannot move pieces when not in a playing game state.`);
     }
