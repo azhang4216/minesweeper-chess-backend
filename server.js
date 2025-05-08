@@ -4,11 +4,34 @@ const { Server } = require("socket.io");
 // const { Redis } = require("@upstash/redis");    // for normal redis commands
 // const IORedis = require("ioredis");             // for pub sub
 const dotenv = require("dotenv");
+const { mongoose } = require("mongoose");
 
 const registerGameHandlers = require("./socket/registerGameHandlers");
 // const handleRedisExpiration = require("./redis/redisExpirationHandler");
 
 dotenv.config();
+
+// DB Setup
+const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost/pb-dev';
+
+const mongooseOptions = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    loggerLevel: 'error',
+};
+
+// connect mongoose and mongodb
+mongoose
+    .connect(mongoURI, mongooseOptions)
+    .then(() => {
+        console.log('mongoose connected to database');
+
+        global.connection = mongoose.connection;
+        console.log('mongo client connected with mongoose');
+    })
+    .catch((err) => {
+        console.log('error: mongoose could not connect to db:', err);
+    });
 
 const app = express();
 const server = http.createServer(app);
