@@ -14,15 +14,9 @@ dotenv.config();
 // DB Setup
 const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost/pb-dev';
 
-const mongooseOptions = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    loggerLevel: 'error',
-};
-
 // connect mongoose and mongodb
 mongoose
-    .connect(mongoURI, mongooseOptions)
+    .connect(mongoURI)
     .then(() => {
         console.log('mongoose connected to database');
 

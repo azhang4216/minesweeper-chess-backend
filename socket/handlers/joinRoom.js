@@ -2,48 +2,29 @@ const { Chess } = require("chess.js");
 const { GAME_STATES } = require("../../constants/gameStates");
 const { CountdownTimer, randomlyFillBombs } = require("../../helpers");
 
-module.exports = (socket, io, games, activePlayers) => (roomId) => {
+module.exports = (socket, io, games, activePlayers) => (roomId, callback) => {
     console.log(`User ${socket.id} is trying to join room ${roomId}...`);
     const room = games[roomId];
 
-    // TODO: implement other time controls
-    // const secsToPlay = 300; // 5 minutes
-    const secsToPlay = 30;
-
     if (!room) {
-        // create a new room
-        games[roomId] = {
-            players: [
-                {
-                    // TODO: replace id when authentication done for persistence
-                    user_id: socket.id,
-                    is_white: Math.random() < 0.5, // 50% change of being either or
-                    bombs: [],
-                    elo: 1500,                     // place holder
-                    // we will add the timer later, when the second player joins
-                }
-            ],
-            game_state: GAME_STATES.matching
-        };
-
-        activePlayers[socket.id] = roomId;
-
-        socket.join(roomId);
-        console.log(`User ${socket.id} started a new room ${roomId}, and is assigned white: ${games[roomId].players[0].is_white}`);
-        socket.emit("roomCreated", { roomId, message: "Room created. Waiting for opponent..." });
-        return;
-
+        // room no longer exists
+        return callback({
+            success: false,
+            message: "Room no longer exists. Please try refreshing."
+        });
     } else if (room.players.length >= 2) {
         // room is full
         console.log(`User ${socket.id} is trying to join a full room: ${roomId}`)
-        socket.emit("roomJoinError", { reason: "ROOM_FULL", message: "Room is full." });
-        return;
+        return callback({
+            success: false,
+            message: "Room is full. Please try another room."
+        });
     } else if (room.players && socket.id === room.players[0].user_id) {
         // for some reason, double registered the same player
         console.log(`User ${socket.id} is already in room ${roomId}...`);
     };
 
-    // let's pair them for a game!
+    // everything checks out - let's pair them for a game!
     room.players.push({
         user_id: socket.id,
         is_white: !room.players[0].is_white,
@@ -54,11 +35,10 @@ module.exports = (socket, io, games, activePlayers) => (roomId) => {
 
     // different starting positions to test with!
     // const twoRooksOneKing = "8/8/8/8/8/8/4k3/K2R4 w - - 0 1";
-    const customFen = "6k1/8/4q3/6r1/1K6/6r1/8/8 w - - 0 1";
+    // const customFen = "6k1/8/4q3/6r1/1K6/6r1/8/8 w - - 0 1";
 
-    room.game = new Chess(customFen);
+    room.game = new Chess();
     room.game_state = GAME_STATES.placing_bombs;
-    room.time_control = secsToPlay;
 
     socket.join(roomId);
     activePlayers[socket.id] = roomId;
@@ -89,6 +69,6 @@ module.exports = (socket, io, games, activePlayers) => (roomId) => {
         players: room.players,
         fen: room.game.fen(),
         secsToPlaceBomb,
-        secsToPlay
+        secsToPlay: room.time_control,
     });
 };
