@@ -5,9 +5,12 @@ const { Server } = require("socket.io");
 // const IORedis = require("ioredis");             // for pub sub
 const dotenv = require("dotenv");
 const { mongoose } = require("mongoose");
+const cors = require("cors");
 
-const registerGameHandlers = require("./socket/registerGameHandlers");
+const registerHandlers = require("./handlers/registerHandlers");
 // const handleRedisExpiration = require("./redis/redisExpirationHandler");
+
+const authRoutes = require("./api/auth");
 
 dotenv.config();
 
@@ -28,8 +31,15 @@ mongoose
     });
 
 const app = express();
+app.use(express.json()); // allows for POST routes to read req.body
+app.use(cors());         // cross origin sharing
+
+// mount the api routes
+app.use("/api", authRoutes);
+
 const server = http.createServer(app);
 
+// TODO: restrict origin to only frontend domain
 const io = new Server(server, {
     cors: { origin: "*" },
 });
@@ -86,7 +96,7 @@ const activePlayers = {};    // includes people playing and people in the queue
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-    registerGameHandlers(socket, io, rooms, activePlayers);
+    registerHandlers(socket, io, rooms, activePlayers);
 });
 
 module.exports = { server };

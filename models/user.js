@@ -7,21 +7,66 @@ dotenv.config({ silent: true });
 const { SALT_ROUNDS } = process.env;
 
 const UserSchema = new Schema({
-    date_created: Date,
-    email: String,
-    first_name: String,
-    last_name: String,
-    salted_password: String,
-}, {
-    toJSON: {
-        virtuals: true,
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        trim: true
     },
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true
+    },
+    salted_password: {
+        type: String,
+        required: true,
+    },
+    date_joined: {
+        type: Date,
+        default: Date.now,
+    },
+    past_games: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Game',
+    }],
+    friends: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+    }],
+    friendRequestsSent: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    friendRequestsReceived: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    elo: {
+        type: Number,
+        default: 1500, // optional: default ELO rating
+    },
+    status: {
+        type: String,
+        enum: ['GOOD', 'BANNED', 'INACTIVE'],
+        default: 'GOOD',
+    },
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user',
+    },
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
+}, {
+    toJSON: { virtuals: true },
+    timestamps: true,
 });
 
-// index on email
-UserSchema.index({
-    email: 1,
-}, { unique: true });
+// Index on email (enforced by `unique: true`)
+UserSchema.index({ email: 1 }, { unique: true });
 
 /**
  * @description Mongoose hook for salting/hashing user password
