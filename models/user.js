@@ -1,8 +1,9 @@
-import mongoose, { Schema } from 'mongoose';
-import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
+const mongoose = require('mongoose');
+const { Schema } = mongoose;
+const bcrypt = require('bcrypt');
+const dotenv = require('dotenv');
 
-dotenv.config({ silent: true });
+dotenv.config();
 
 const { SALT_ROUNDS } = process.env;
 
@@ -95,4 +96,4 @@ UserSchema.pre('save', hashPassword);
 
 const UserModel = mongoose.model('User', UserSchema);
 
-export default UserModel;
+module.exports = UserModel;
