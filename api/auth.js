@@ -30,27 +30,34 @@ router.post("/reset-password", async (req, res) => {
 // ------------------------
 router.post("/create-account", async (req, res) => {
     const { email, username, password } = req.body;
-    console.log(req.body);
-    console.log(email, username, password);
 
     if (!email || !username || !password)
         return res.status(400).json({ error: "Username and password are required" });
 
     try {
-        const existingUser = await User.findOne({ username });
-        if (existingUser) return res.status(400).json({ error: "Username already taken" });
+        const existingUsername = await User.findOne({ username });
+        if (existingUsername) return res.status(400).json({ error: "Username already taken" });
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const existingEmail = await User.findOne({ email });
+        if (existingEmail) return res.status(400).json({ error: "An account with this email already exists"});
 
-        const newUser = new User({ username, password: hashedPassword });
+        // note: pre-save hook will salt our password for us
+        const newUser = new User({ 
+            email, 
+            username, 
+            salted_password: password 
+        });
         await newUser.save();
 
         console.log(`User successfully created: ${username}`)
 
-        res.status(201).json({ message: "Account created successfully" });
+        return res.status(201).json({ 
+            message: "Account created successfully",
+            username
+        });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Server error" });
+        return res.status(500).json({ error: "Server error" });
     }
 });
 

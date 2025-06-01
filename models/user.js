@@ -66,9 +66,6 @@ const UserSchema = new Schema({
     timestamps: true,
 });
 
-// Index on email (enforced by `unique: true`)
-UserSchema.index({ email: 1 }, { unique: true });
-
 /**
  * @description Mongoose hook for salting/hashing user password
  * @param {Function} next

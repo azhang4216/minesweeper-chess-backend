@@ -87,21 +87,21 @@ userRouter.route('/login')
 userRouter.route('/sign-up')
     .post(requireAuth, async (req, res) => {
         try {
-            const { email } = req.body;
+            const { email, username, password } = req.body;
 
             const userAlreadyExists = await User.userWithEmailExists(email);
 
             if (userAlreadyExists) {
                 return res.status(RESPONSE_CODES.BAD_REQUEST.status)
                     .send(generateResponse(RESPONSE_TYPES.BAD_REQUEST, {
-                        message: 'Please sign up with a different email',
+                        message: 'Another account has already been made with this email.',
                     }));
             }
-
-            const user = await User.createUser(req.body);
+            
+            const user = await User.registerUser(email, username, password);
 
             return res.send(generateResponse(RESPONSE_TYPES.SUCCESS, {
-                token: User.tokenForUser(req.body.email),
+                token: User.tokenForUser(email),
                 user: {
                     ...user._doc,
                     salted_password: undefined,

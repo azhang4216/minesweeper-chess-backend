@@ -19,7 +19,7 @@ const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost/pb-dev';
 
 // connect mongoose and mongodb
 mongoose
-    .connect(mongoURI)
+    .connect(mongoURI, { dbName: 'landmine_chess' })
     .then(() => {
         console.log('mongoose connected to database');
 
