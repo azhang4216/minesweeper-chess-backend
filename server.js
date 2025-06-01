@@ -32,16 +32,38 @@ mongoose
 
 const app = express();
 app.use(express.json()); // allows for POST routes to read req.body
-app.use(cors());         // cross origin sharing
+
+// cors middleware setup
+const allowedOrigins = [
+    'http://localhost:3000',        // dev frontend
+    process.env.FRONTEND_URL || '', // deployed frontend URL
+].filter(Boolean); // filter out empty strings
+
+const corsOptions = {
+    origin: function (origin, callback) {
+        // allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS policy: origin ${origin} not allowed`));
+        }
+    },
+    credentials: true, // enable Set-Cookie and cookies on frontend
+};
+
+app.use(cors(corsOptions));
 
 // mount the api routes
 app.use("/api", authRoutes);
 
 const server = http.createServer(app);
 
-// TODO: restrict origin to only frontend domain
 const io = new Server(server, {
-    cors: { origin: "*" },
+    cors: {
+        origin: allowedOrigins,
+        credentials: true,
+    },
 });
 
 // for now, we use redis just for timeout detection (redis key expiry)

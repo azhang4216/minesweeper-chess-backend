@@ -1,7 +1,15 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/user");
+const { 
+    ActivePlayer,
+    User
+} = require("../models");
 const bcrypt = require("bcryptjs");
+const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET;
+const TOKEN_EXPIRATION = process.env.TOKEN_EXPIRATION
 
 // ------------------------
 // RESET PASSWORD 
@@ -65,21 +73,30 @@ router.post("/create-account", async (req, res) => {
 // LOGIN
 // ------------------------
 router.post("/login", async (req, res) => {
-    const { username, password } = req.body;
+    const { identifier, password } = req.body;
 
-    if (!username || !password)
-        return res.status(400).json({ error: "Username and password are required" });
+    if (!identifier || !password) {
+        return res.status(400).json({ error: "Username/email and password are required" });
+    }
 
     try {
-        const user = await User.findOne({ username });
+        // Determine if it's an email or username
+        const isEmail = identifier.includes('@');
+        const query = isEmail ? { email: identifier } : { username: identifier };
+
+        const user = await User.findOne(query);
         if (!user) return res.status(400).json({ error: "Invalid credentials" });
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = await bcrypt.compare(password, user.salted_password);
         if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: TOKEN_EXPIRATION });
 
-        res.json({ message: "Login successful", token, user: { id: user._id, username: user.username } });
+        res.json({
+            message: "Login successful",
+            token,
+            user: { id: user._id, username: user.username, email: user.email },
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Server error" });
@@ -101,6 +118,35 @@ router.get('/verify', async (req, res) => {
         res.json({ user });
     } catch (err) {
         res.status(401).json({ message: 'Invalid or expired token' });
+    }
+});
+
+router.get('/guest-uuid', async (_req, res) => {
+    try {
+        let guestUUID;
+        let result;
+
+        // Keep generating until we find a unique UUID (i.e., one not already in ActivePlayer)
+        do {
+            guestUUID = uuidv4();
+            result = await ActivePlayer.findOne({ playerId: guestUUID });
+        } while (result);
+
+        console.log(`Generated guest UUID: ${guestUUID}`);
+
+        // Create a new ActivePlayer with the unique UUID
+        const newGuest = new ActivePlayer({
+            playerId: guestUUID,
+            isGuest: true
+        });
+
+        await newGuest.save();
+        console.log(`Saved new guest ${guestUUID} to ActivePlayers`);
+
+        res.json({ guestUUID });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server failed to generate guest UUID' });
     }
 });
 
