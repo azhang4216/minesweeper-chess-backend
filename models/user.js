@@ -59,6 +59,14 @@ const UserSchema = new Schema({
         enum: ['user', 'admin'],
         default: 'user',
     },
+    // verification for when user signs up
+    isEmailVerified: {
+        type: Boolean,
+        default: false,
+    },
+    emailVerificationToken: String,
+    emailVerificationExpires: Date,
+    // verification for when user resets password
     resetPasswordToken: String,
     resetPasswordExpires: Date,
 }, {

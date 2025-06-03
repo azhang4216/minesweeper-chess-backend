@@ -7,6 +7,8 @@ const {
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_EXPIRATION = process.env.TOKEN_EXPIRATION
@@ -49,20 +51,72 @@ router.post("/create-account", async (req, res) => {
         const existingEmail = await User.findOne({ email });
         if (existingEmail) return res.status(400).json({ error: "An account with this email already exists"});
 
-        // note: pre-save hook will salt our password for us
+        const emailVerificationToken = crypto.randomBytes(32).toString("hex");
+        const emailVerificationExpires = Date.now() + 1000 * 60 * 60; // 1 hour expiry
+
         const newUser = new User({ 
             email, 
             username, 
-            salted_password: password 
+            salted_password: password,
+            emailVerificationToken,
+            emailVerificationExpires
         });
+
         await newUser.save();
 
-        console.log(`User successfully created: ${username}`)
+        const transporter = nodemailer.createTransport({
+            service: 'Gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
+        await transporter.sendMail({
+            from: `"Landmine Chess App" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "Verify your email",
+            html: `<p>Click the link to verify your email. This link will expire in an hour: <a href="${verifyUrl}">${verifyUrl}</a></p>`
+        });
 
         return res.status(201).json({ 
-            message: "Account created successfully",
-            username
+            message: "Account created. Please check your email to verify your address."
         });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
+router.get('/verify-email', async (req, res) => {
+    const { token } = req.query;
+
+    if (!token) return res.status(400).json({ error: "Missing token" });
+
+    try {
+        const user = await User.findOne({ 
+            emailVerificationToken: token, 
+            // emailVerificationExpires: { $gt: Date.now() } 
+        });
+
+        if (!user) {
+            return res.status(400).json({ error: "Invalid token" });
+        } else if (user.emailVerificationExpires > Date.now()) {
+            // TODO: send another verification link?
+            return res.status(400).json({ error: "Link has already expired." });
+        } else if (user.isEmailVerified) {
+            return res.status(400).json({ error: "Email is already verified." });
+        }
+
+        user.isEmailVerified = true;
+
+        // we leave the email verification stuff in the account for seeing if email is already verified
+        // user.emailVerificationToken = undefined;
+        // user.emailVerificationExpires = undefined;
+
+        await user.save();
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: "Server error" });
@@ -86,6 +140,10 @@ router.post("/login", async (req, res) => {
 
         const user = await User.findOne(query);
         if (!user) return res.status(400).json({ error: "Invalid credentials" });
+
+        if (!user.isEmailVerified) {
+            return res.status(403).json({ error: "Please verify your email before logging in." });
+        }
 
         const isMatch = await bcrypt.compare(password, user.salted_password);
         if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
