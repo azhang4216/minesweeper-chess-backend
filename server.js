@@ -25,6 +25,11 @@ mongoose
 
         global.connection = mongoose.connection;
         console.log('mongo client connected with mongoose');
+
+        const PORT = process.env.PORT || 4000;
+        server.listen(PORT, () => {
+            console.log(`Server listening on port ${PORT}`);
+        });
     })
     .catch((err) => {
         console.log('error: mongoose could not connect to db:', err);
