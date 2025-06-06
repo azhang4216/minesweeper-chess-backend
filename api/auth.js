@@ -79,13 +79,26 @@ router.post("/create-account", async (req, res) => {
             to: email,
             subject: "Verify your email",
             html: `
-                <div style="font-family: Impact, Charcoal, sans-serif; background-color: #333; padding: 20px; text-align: center;">
-                <img src="cid:landmineLogo" alt="Landmine Chess" style="width: 150px; height: auto; margin-bottom: 20px;" />
-                <h1 style="font-size: 24px; color: #fdfdfd;">Verify Your Email</h1>
+                <div style="font-family: Impact, Charcoal, sans-serif; background-color: #fdfdfd; padding: 20px; text-align: center;">
+                <img src="cid:landmineLogo" alt="Landmine Chess" style="width: 100%; max-width: 350px; height: auto; margin-bottom: 20px;" />
+                <h1 style="font-size: 30px; color: #333;">Verify Your Email</h1>
                 <p style="font-size: 18px; color: #555;">
                     Click the link below to verify your email. This link will expire in an hour.
                 </p>
-                <a href="${verifyUrl}" style="font-size: 18px; color: #6b4caf; word-wrap: break-word;">${verifyUrl}</a>
+                <a href="${verifyUrl}" 
+                    style="
+                        display: inline-block;
+                        background-color: #6b4caf;
+                        color: #ffffff;
+                        text-decoration: none;
+                        font-size: 18px;
+                        padding: 12px 24px;
+                        margin-top: 20px;
+                        border-radius: 6px;
+                        font-weight: bold;
+                    ">
+                    Verify Email
+                </a>
                 </div>
             `,
             attachments: [{
