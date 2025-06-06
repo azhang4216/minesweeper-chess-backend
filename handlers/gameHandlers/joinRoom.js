@@ -1,5 +1,5 @@
 const { Chess } = require("chess.js");
-const { GAME_STATES } = require("../gameStates");
+const { GAME_STATES } = require("../../constants/gameStates");
 const { CountdownTimer, randomlyFillBombs } = require("../../helpers");
 
 module.exports = (socket, io, games, activePlayers) => (roomId, callback) => {

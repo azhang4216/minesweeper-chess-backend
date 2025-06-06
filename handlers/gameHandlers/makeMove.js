@@ -8,7 +8,7 @@ const {
     // KNIGHT,
     // PAWN, 
 } = require("chess.js");
-const { GAME_STATES } = require("../gameStates");
+const { GAME_STATES } = require("../../constants/gameStates");
 const { calculateElo, CountdownTimer } = require("../../helpers");
 
 // const handleTimerLogic = async (io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved) => {

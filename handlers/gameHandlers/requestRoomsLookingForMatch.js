@@ -1,4 +1,4 @@
-const { GAME_STATES } = require("../gameStates");
+const { GAME_STATES } = require("../../constants/gameStates");
 // const util = require('util')
 
 module.exports = (socket, rooms) => (callback) => {

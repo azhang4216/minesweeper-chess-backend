@@ -1,4 +1,4 @@
-const { GAME_STATES } = require("../gameStates");
+const { GAME_STATES } = require("../../constants/gameStates");
 
 module.exports = (socket, io, games, activePlayers) => ({ roomId }, callback) => {
     console.log(`User ${socket.id} is trying to cancel room ID: ${roomId}.`);

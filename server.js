@@ -4,17 +4,66 @@ const { Server } = require("socket.io");
 // const { Redis } = require("@upstash/redis");    // for normal redis commands
 // const IORedis = require("ioredis");             // for pub sub
 const dotenv = require("dotenv");
+const { mongoose } = require("mongoose");
+const cors = require("cors");
 
-const registerGameHandlers = require("./socket/registerGameHandlers");
+const registerHandlers = require("./handlers/registerHandlers");
 // const handleRedisExpiration = require("./redis/redisExpirationHandler");
+
+const authRoutes = require("./api/auth");
 
 dotenv.config();
 
+// DB Setup
+const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost/pb-dev';
+
+// connect mongoose and mongodb
+mongoose
+    .connect(mongoURI, { dbName: 'landmine_chess' })
+    .then(() => {
+        console.log('mongoose connected to database');
+
+        global.connection = mongoose.connection;
+        console.log('mongo client connected with mongoose');
+    })
+    .catch((err) => {
+        console.log('error: mongoose could not connect to db:', err);
+    });
+
 const app = express();
+app.use(express.json()); // allows for POST routes to read req.body
+
+// cors middleware setup
+const allowedOrigins = [
+    'http://localhost:3000',        // dev frontend
+    process.env.FRONTEND_URL || '', // deployed frontend URL
+].filter(Boolean); // filter out empty strings
+
+const corsOptions = {
+    origin: function (origin, callback) {
+        // allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error(`CORS policy: origin ${origin} not allowed`));
+        }
+    },
+    credentials: true, // enable Set-Cookie and cookies on frontend
+};
+
+app.use(cors(corsOptions));
+
+// mount the api routes
+app.use("/api", authRoutes);
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
-    cors: { origin: "*" },
+    cors: {
+        origin: allowedOrigins,
+        credentials: true,
+    },
 });
 
 // for now, we use redis just for timeout detection (redis key expiry)
@@ -69,7 +118,7 @@ const activePlayers = {};    // includes people playing and people in the queue
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-    registerGameHandlers(socket, io, rooms, activePlayers);
+    registerHandlers(socket, io, rooms, activePlayers);
 });
 
 module.exports = { server };
