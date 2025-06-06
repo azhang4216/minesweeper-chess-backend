@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { 
+const {
     ActivePlayer,
     User
 } = require("../models");
@@ -49,14 +49,14 @@ router.post("/create-account", async (req, res) => {
         if (existingUsername) return res.status(400).json({ error: "Username already taken" });
 
         const existingEmail = await User.findOne({ email });
-        if (existingEmail) return res.status(400).json({ error: "An account with this email already exists"});
+        if (existingEmail) return res.status(400).json({ error: "An account with this email already exists" });
 
         const emailVerificationToken = crypto.randomBytes(32).toString("hex");
         const emailVerificationExpires = Date.now() + 1000 * 60 * 60; // 1 hour expiry
 
-        const newUser = new User({ 
-            email, 
-            username, 
+        const newUser = new User({
+            email,
+            username,
             salted_password: password,
             emailVerificationToken,
             emailVerificationExpires
@@ -73,14 +73,29 @@ router.post("/create-account", async (req, res) => {
         });
 
         const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
+
         await transporter.sendMail({
             from: `"Landmine Chess App" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: "Verify your email",
-            html: `<p>Click the link to verify your email. This link will expire in an hour: <a href="${verifyUrl}">${verifyUrl}</a></p>`
+            html: `
+                <div style="font-family: Impact, Charcoal, sans-serif; background-color: #333; padding: 20px; text-align: center;">
+                <img src="cid:landmineLogo" alt="Landmine Chess" style="width: 150px; height: auto; margin-bottom: 20px;" />
+                <h1 style="font-size: 24px; color: #fdfdfd;">Verify Your Email</h1>
+                <p style="font-size: 18px; color: #555;">
+                    Click the link below to verify your email. This link will expire in an hour.
+                </p>
+                <a href="${verifyUrl}" style="font-size: 18px; color: #6b4caf; word-wrap: break-word;">${verifyUrl}</a>
+                </div>
+            `,
+            attachments: [{
+                filename: 'landmine_purple.png',
+                path: './constants/landmine_purple.png',
+                cid: 'landmineLogo'
+            }]
         });
 
-        return res.status(201).json({ 
+        return res.status(201).json({
             message: "Account created. Please check your email to verify your address."
         });
 
@@ -90,20 +105,20 @@ router.post("/create-account", async (req, res) => {
     }
 });
 
-router.get('/verify-email', async (req, res) => {
-    const { token } = req.query;
+router.post('/verify-email', async (req, res) => {
+    const { token } = req.body;
 
     if (!token) return res.status(400).json({ error: "Missing token" });
 
     try {
-        const user = await User.findOne({ 
-            emailVerificationToken: token, 
+        const user = await User.findOne({
+            emailVerificationToken: token,
             // emailVerificationExpires: { $gt: Date.now() } 
         });
 
         if (!user) {
             return res.status(400).json({ error: "Invalid token" });
-        } else if (user.emailVerificationExpires > Date.now()) {
+        } else if (user.emailVerificationExpires < Date.now()) {
             // TODO: send another verification link?
             return res.status(400).json({ error: "Link has already expired." });
         } else if (user.isEmailVerified) {
@@ -117,6 +132,8 @@ router.get('/verify-email', async (req, res) => {
         // user.emailVerificationExpires = undefined;
 
         await user.save();
+        console.log("user successfully verified");
+        return res.status(200).json({ message: "User successfully verified." });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: "Server error" });
