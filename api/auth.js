@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const {
-    ActivePlayer,
+    OnlineUser,
     User
 } = require("../models");
 const bcrypt = require("bcryptjs");
@@ -214,22 +214,22 @@ router.get('/guest-uuid', async (_req, res) => {
         let guestUUID;
         let result;
 
-        // Keep generating until we find a unique UUID (i.e., one not already in ActivePlayer)
+        // Keep generating until we find a unique UUID (i.e., one not already in OnlineUser)
         do {
             guestUUID = uuidv4();
-            result = await ActivePlayer.findOne({ playerId: guestUUID });
+            result = await OnlineUser.findOne({ playerId: guestUUID });
         } while (result);
 
         console.log(`Generated guest UUID: ${guestUUID}`);
 
-        // Create a new ActivePlayer with the unique UUID
-        const newGuest = new ActivePlayer({
+        // Create a new OnlineUser with the unique UUID
+        const newGuest = new OnlineUser({
             playerId: guestUUID,
             isGuest: true
         });
 
         await newGuest.save();
-        console.log(`Saved new guest ${guestUUID} to ActivePlayers`);
+        console.log(`Saved new guest ${guestUUID} to OnlineUsers`);
 
         res.json({ guestUUID });
     } catch (err) {

@@ -1,9 +1,9 @@
-const ActivePlayer = require("./activePlayer");
+const OnlineUser = require("./onlineUser");
 const User = require("./user");
-const VerificationToken = require("./verificationToken");
+const ActiveGame = require("./activeGame");
 
 module.exports = {
-    ActivePlayer,
+    OnlineUser,
     User,
-    VerificationToken
+    ActiveGame
 };

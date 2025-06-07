@@ -1,14 +1,14 @@
-import { ActivePlayer } from '../models';
+import { OnlineUser } from '../models';
 import { RESPONSE_CODES } from '../constants';
 
 /**
  * @description retrieves user object
  * @param {String} playerId player id (could be username or guest UUID)
- * @returns {Promise<ActivePlayer>} promise that resolves to user object or error
+ * @returns {Promise<OnlineUser>} promise that resolves to user object or error
  */
 export const getPlayerById = async (playerId) => {
     try {
-        const player = await ActivePlayer.findOne({ playerId });
+        const player = await OnlineUser.findOne({ playerId });
         if (player) {
             return {
                 ...RESPONSE_CODES.SUCCESS,

@@ -1,7 +1,7 @@
 const userController = require('./user');
-const activePlayerController = require('./activePlayer');
+const onlineUserController = require('./onlineUser');
 
 module.exports = {
     userController,
-    activePlayerController,
+    onlineUserController,
 };
