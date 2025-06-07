@@ -17,7 +17,7 @@ const playerSchema = new mongoose.Schema({
 
 // Define the active game schema
 const activeGameSchema = new mongoose.Schema({
-    room_id: { type: String, required: true, unique: true },
+    game_id: { type: String, required: true, unique: true },
     players: { type: [playerSchema], required: true },
 
     // note: we need pgn not just fen, to check for repetition draws, etc.
