@@ -1,6 +1,5 @@
-const { Chess } = require("chess.js");
 const { GAME_STATES } = require("../../constants/gameStates");
-const { CountdownTimer, randomlyFillBombs } = require("../../helpers");
+// const { CountdownTimer, randomlyFillBombs } = require("../../helpers");
 const { 
     ActiveGame,
     User
@@ -98,8 +97,8 @@ module.exports = (socket, io) => async (gameId, playerId, playerIsGuest, callbac
     // console.log(`Set a bomb timer for game ${gameId}`);
 
     // finally, tell the sockets we're ready to start
-    io.to(gameId).emit("gameJoined", {
-        gameId,
+    io.to(gameId).emit("roomJoined", {
+        roomId: gameId,
         players: game.players,
         secsToPlaceBomb,
         secsToPlay: game.time_control,
