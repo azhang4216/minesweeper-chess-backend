@@ -8,7 +8,7 @@ const playerSchema = new mongoose.Schema({
     bombs: { type: [String], default: [] },
     elo: { type: Number, required: true },
     seconds_left: { type: Number },
-    }, { _id: false });
+}, { _id: false });
 
 // Define the active game schema
 const activeGameSchema = new mongoose.Schema({
@@ -17,10 +17,10 @@ const activeGameSchema = new mongoose.Schema({
 
     // note: we need pgn not just fen, to check for repetition draws, etc.
     game_pgn: { type: String, default: '' },
-    game_state: { 
-        type: String, 
-        enum: ["MATCHING", "PLACING_BOMBS", "PLAYING"], 
-        required: true 
+    game_state: {
+        type: String,
+        enum: ["MATCHING", "PLACING_BOMBS", "PLAYING"],
+        required: true
     },
     time_control: { type: Number, required: true },
     last_move_time: { type: Date }

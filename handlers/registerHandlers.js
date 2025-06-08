@@ -14,9 +14,11 @@ module.exports = function registerHandlers(socket, io) {
     socket.on("joinRoom", joinRoom(socket, io));
     socket.on("placeBomb", placeBomb(io));
     socket.on("makeMove", makeMove(socket, io));
-    socket.on("playerDisconnect", disconnect(socket, io));
+    socket.on("playerDisconnect", disconnect(socket));
     socket.on("cancelRoom", cancelRoom(socket, io));
     socket.on("createRoom", createRoom(socket, io));
-    socket.on("disconnect", disconnect(socket, io));
+
+    // TODO: figure out how to get playerId on disconnect
+    // socket.on("disconnect", disconnect(socket));
     socket.on("requestRoomsLookingForMatch", requestRoomsLookingForMatch(socket, rooms));
 };

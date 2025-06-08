@@ -1,16 +1,17 @@
-module.exports = (socket, io, games, activePlayers) => () => {
-    console.log("User disconnected:", socket.id);
+const { OnlineUser } = require("../../models");
+const { finishAndRecordGame } = require("../../helpers"); 
 
-    const roomId = activePlayers[socket.id];
-    if (!roomId) return;
+module.exports = (socket) => async (playerId) => {
+    console.log("User disconnected:", playerId);
 
-    const room = games[roomId];
-    if (!room) return;
+    const user = await OnlineUser.findOne({ player_id: playerId });
+    if (!user) return;
 
-    games[roomId]["players"].forEach((player, _index, _array) => {
-        delete activePlayers[player.user_id];
-        console.log(`Removed player ${player.user_id}, room ${roomId}, from active players.`);
-    });
+    await finishAndRecordGame(user.room_id, playerId, false, "abandonment");
+    // games[roomId]["players"].forEach((player, _index, _array) => {
+    //     delete activePlayers[player.user_id];
+    //     console.log(`Removed player ${player.user_id}, room ${roomId}, from active players.`);
+    // });
 
     // get rid of all associated keys
     // const valOfBombTimerInRoom = await redis.getdel(`bomb_timer:${roomId}`);
@@ -27,14 +28,9 @@ module.exports = (socket, io, games, activePlayers) => () => {
     //     console.log(`Removed the active black timer expiry key from room ${roomId}`);
     // };
 
-    // TODO: persistent game recording in DB
-    delete games[roomId];
-
-    io.to(roomId).emit("playerDisconnected", {
-        roomId,
-        message: `Player ${socket.id} disconnected from game room ${roomId}.`
+    socket.to(opponent.id).emit("opponentDisconnected", {
+        disconnectedPlayerId: playerId,
+        myEloChange: playerIsWhite ? blackEloChange : whiteEloChange,
+        oppEloChange: playerIsWhite ? whiteEloChange : blackEloChange
     });
-
-    console.log(`Active games: ${JSON.stringify(games)}`);
-    console.log(`Active players: ${JSON.stringify(activePlayers)}`);
 }

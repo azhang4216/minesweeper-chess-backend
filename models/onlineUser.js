@@ -6,7 +6,11 @@
 const mongoose = require("mongoose");
 
 const onlineUsersSchema = new mongoose.Schema({
-    player_id: { type: String, required: true }, // username if not guest, UUID if guest
+    player_id: { // username if not guest, UUID if guest
+        type: String, 
+        required: true, 
+        unique: true
+    }, 
     is_guest: { type: Boolean, required: true },
     room_id: { type: String, required: false }
 });
