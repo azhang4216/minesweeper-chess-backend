@@ -6,9 +6,9 @@
 const mongoose = require("mongoose");
 
 const onlineUsersSchema = new mongoose.Schema({
-    playerId: { type: String, required: true }, // username if not guest, UUID if guest
-    isGuest: { type: Boolean, required: true },
-    roomId: { type: String, required: false }
+    player_id: { type: String, required: true }, // username if not guest, UUID if guest
+    is_guest: { type: Boolean, required: true },
+    room_id: { type: String, required: false }
 });
 
 module.exports = mongoose.model("onlineUser", onlineUsersSchema);
