@@ -1,5 +1,5 @@
 const {
-    // Chess,
+    Chess,
     // Piece,
     WHITE,
     BLACK,
@@ -10,6 +10,7 @@ const {
 } = require("chess.js");
 const { GAME_STATES } = require("../../constants/gameStates");
 const { calculateElo, CountdownTimer } = require("../../helpers");
+const { ActiveGame, OnlineUser } = require("../../models");
 
 // const handleTimerLogic = async (io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved) => {
 //     const timerKeyOfPlayerWhoJustMoved = `player_timer:${roomId}:${isPlayerWhoJustMovedWhite ? "white" : "black"}`;
@@ -47,63 +48,70 @@ const { calculateElo, CountdownTimer } = require("../../helpers");
 // };
 
 
-module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {
-    const roomId = activePlayers[socket.id];
+module.exports = (socket, io) => async ({ from, to, promotion, playerId }) => {
+    const user = await OnlineUser.findOne({ player_id: playerId });
+    if (!user) return;
+
+    const roomId = user.room_id;
     if (!roomId) return;
 
-    const room = games[roomId];
-    if (!room) return;
+    const game = await ActiveGame.findOne({ game_id: roomId });
+    if (!game) return;
 
-    console.log(`${socket.id} trying to make move: ${from} to ${to}.`);
+    console.log(`${playerId} trying to make move: ${from} to ${to}.`);
 
     if (room.game_state === GAME_STATES.playing) {
+        const chess = new Chess();
+        chess.loadPgn(game.game_pgn);
+        
         let move = null;
 
         try {
-            move = room.game.move({ from, to, promotion });
+            move = chess.move({ from, to, promotion });
         } catch (_e) {
             console.log("tried to make illegal move");
             return;
         }
 
+        // TODO: timer logic
         // now that we know it's a valid move, let's see if the timer has started
-        if (!("timer" in room.players[0])) {
-            // we need to set timers and start them for our players!
-            room.players.forEach((player) => {
-                player.timer = new CountdownTimer(room.time_control, () => {
-                    if (room.game_state === GAME_STATES.playing) {
-                        const winnerColor = player.is_white ? "b" : "w";
-                        const [whiteEloChange, blackEloChange] = calculateElo(
-                            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
-                            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
-                            (winnerColor === "w") ? 1 : 0,
-                        );
+        // if (!("timer" in room.players[0])) {
+        //     // we need to set timers and start them for our players!
+        //     room.players.forEach((player) => {
+        //         player.timer = new CountdownTimer(room.time_control, () => {
+        //             if (room.game_state === GAME_STATES.playing) {
+        //                 const winnerColor = player.is_white ? "b" : "w";
+        //                 const [whiteEloChange, blackEloChange] = calculateElo(
+        //                     (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
+        //                     (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+        //                     (winnerColor === "w") ? 1 : 0,
+        //                 );
 
-                        room.game_state = GAME_STATES.game_over;
+        //                 room.game_state = GAME_STATES.game_over;
 
-                        io.to(roomId).emit("winLossGameOver", {
-                            winner: winnerColor,
-                            by: "timeout",
-                            whiteEloChange,
-                            blackEloChange,
-                        });
+        //                 io.to(roomId).emit("winLossGameOver", {
+        //                     winner: winnerColor,
+        //                     by: "timeout",
+        //                     whiteEloChange,
+        //                     blackEloChange,
+        //                 });
 
-                        console.log(`Room ${roomId}: ${winnerColor} wins by timeout.`);
-                    } else {
-                        console.log(`Room ${roomId}: player timer went off, but game is no longer being played.`);
-                    }
+        //                 console.log(`Room ${roomId}: ${winnerColor} wins by timeout.`);
+        //             } else {
+        //                 console.log(`Room ${roomId}: player timer went off, but game is no longer being played.`);
+        //             }
 
-                });
-            });
-        }
+        //         });
+        //      });
+        // }
 
-        const preExplosionFen = room.game.fen();  // for explosion animation purposes
+        const preExplosionFen = chess.fen();  // for explosion animation purposes
 
-        const indexOfPlayerWhoJustMoved = (room.players[0].user_id === socket.id) ? 0 : 1;
+        const indexOfPlayerWhoJustMoved = (game.players[0].id === playerId) ? 0 : 1;
         const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].is_white;
 
         // stop the timer of the person who just moved
-        room.players[indexOfPlayerWhoJustMoved].timer.pause();
+        // room.players[indexOfPlayerWhoJustMoved].timer.pause();
 
         // run timer logic in parallel for less delay - no need to wait for it to finish before moving on
         // handleTimerLogic(io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved);
@@ -114,18 +122,18 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
             let specialMove = null;
 
             // also there are: move.isEnPassant?.(), move.isBigPawn?.() which is for double pawn move
-            if (room.players[0].bombs.includes(to) || room.players[1].bombs.includes(to)) {
+            if (game.players[0].bombs.includes(to) || game.players[1].bombs.includes(to)) {
                 specialMove = `explode ${to}`;
 
                 // get rid of detonated bomb
-                const player = room.players[0].bombs.includes(to)
-                    ? room.players[0]
-                    : room.players[1];
+                const player = game.players[0].bombs.includes(to)
+                    ? game.players[0]
+                    : game.players[1];
                 player.bombs = player.bombs.filter(bomb => bomb !== to);
 
                 // remove the piece that set off that bomb
-                room.game.remove(to);
-            } else if (room.game.inCheck?.()) {
+                chess.remove(to);
+            } else if (chess.inCheck?.()) {
                 specialMove = "in check";
             } else if (move.isCapture?.() || move.isEnPassant?.()) {
                 specialMove = "capture";
@@ -135,23 +143,25 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
                 specialMove = "castle";
             }
 
+            // update to the new pgn
+            game.game_pgn = chess.pgn();
+
             // broadcast to both players this move
             io.to(roomId).emit("gameState", {
-                gameFen: room.game.fen(),
+                gameFen: chess.fen(),
                 moveSan: move.san + (specialMove && specialMove.startsWith("explode") ? "💣💥" : ""),
                 specialMove,
-                sideToMoveNext: room.game.turn(),
+                sideToMoveNext: chess.turn(),
                 preExplosionFen   // different from gameFen only if explosion happened
             });
 
-            const isWhiteKingMissing = room.game.findPiece({ type: KING, color: WHITE }).length == 0;
-            const isBlackKingMissing = room.game.findPiece({ type: KING, color: BLACK }).length == 0;
+            const isWhiteKingMissing = chess.findPiece({ type: KING, color: WHITE }).length == 0;
+            const isBlackKingMissing = chess.findPiece({ type: KING, color: BLACK }).length == 0;
 
             console.log(`White king is missing: ${isWhiteKingMissing}`);
             console.log(`Black king is missing: ${isBlackKingMissing}`);
             console.log(`Special move: ${specialMove}`);
 
-            // 
             /* 
             tell players if this resulted in a game over move!
             -> note: needed a CUSTOM way to check if game is over
@@ -163,12 +173,12 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
                     // case 1. king stepped into a bomb => game over
                     const winnerColor = isWhiteKingMissing ? "b" : "w";
                     const [whiteEloChange, blackEloChange] = calculateElo(
-                        (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
-                        (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                        (game.players[0].is_white) ? game.players[0].elo : game.players[1].elo,
+                        (game.players[0].is_white) ? game.players[1].elo : game.players[0].elo,
                         (winnerColor === "w") ? 1 : 0,
                     );
 
-                    room.game_state = GAME_STATES.game_over;
+                    game.game_state = GAME_STATES.game_over;
 
                     console.log(`Room ${roomId} ended by king exploding. ${winnerColor} won.`);
 
@@ -178,17 +188,17 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
                         whiteEloChange,
                         blackEloChange,
                     });
-                } else if (room.game.isInsufficientMaterial()) {
+                } else if (chess.isInsufficientMaterial()) {
                     console.log("Draw by insufficient material (blew up)");
                     // case 2. a non-king piece stepped into a bomb => draw by insufficient material
                     // note: documentation checks piece by piece so exploded bomb shouldn't affect it
                     const [whiteEloChange, blackEloChange] = calculateElo(
-                        (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
-                        (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                        (game.players[0].is_white) ? game.players[0].elo : game.players[1].elo,
+                        (game.players[0].is_white) ? game.players[1].elo : game.players[0].elo,
                         0.5
                     );
 
-                    room.game_state = GAME_STATES.game_over;
+                    game.game_state = GAME_STATES.game_over;
 
                     io.to(roomId).emit("drawGameOver", {
                         by: "insufficient material (a piece exploded!)",
@@ -199,12 +209,13 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
             } else if (isWhiteKingMissing || isBlackKingMissing) {
                 const winnerColor = isBlackKingMissing ? "w" : "b";
                 const [whiteEloChange, blackEloChange] = calculateElo(
-                    (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
-                    (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                    (game.players[0].is_white) ? game.players[0].elo : game.players[1].elo,
+                    (game.players[0].is_white) ? game.players[1].elo : game.players[0].elo,
                     (winnerColor === "w") ? 1 : 0,
                 );
 
-                room.game_state = GAME_STATES.game_over;
+                game.game_state = GAME_STATES.game_over;
+                await game.save();
 
                 io.to(roomId).emit("winLossGameOver", {
                     winner: winnerColor,
@@ -212,20 +223,20 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
                     whiteEloChange,
                     blackEloChange,
                 });
-            } else if (room.game.isGameOver()) {
+            } else if (chess.isGameOver()) {
                 // a "usual" game over, so no "null" references
-                if (room.game.isDraw?.()) {
+                if (chess.isDraw?.()) {
                     const [whiteEloChange, blackEloChange] = calculateElo(
-                        (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
-                        (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                        (game.players[0].is_white) ? game.players[0].elo : game.players[1].elo,
+                        (game.players[0].is_white) ? game.players[1].elo : game.players[0].elo,
                         0.5
                     );
 
                     io.to(roomId).emit("drawGameOver", {
-                        by: room.game.isDrawByFiftyMoves?.() && "50-move rule" ||
-                            room.game.isThreefoldRepetition?.() && "threefold repetition" ||
-                            room.game.isInsufficientMaterial?.() && "insufficient material" ||
-                            room.game.isStalemate?.() && "stalemate" ||
+                        by: chess.isDrawByFiftyMoves?.() && "50-move rule" ||
+                            chess.isThreefoldRepetition?.() && "threefold repetition" ||
+                            chess.isInsufficientMaterial?.() && "insufficient material" ||
+                            chess.isStalemate?.() && "stalemate" ||
                             null, // technically, should never be null
                         whiteEloChange,
                         blackEloChange,
@@ -235,8 +246,8 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
                     const winnerColor = isPlayerWhoJustMovedWhite ? "w" : "b";
 
                     const [whiteEloChange, blackEloChange] = calculateElo(
-                        (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
-                        (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+                        (game.players[0].is_white) ? game.players[0].elo : game.players[1].elo,
+                        (game.players[0].is_white) ? game.players[1].elo : game.players[0].elo,
                         (winnerColor === "w") ? 1 : 0,
                     );
 
@@ -248,25 +259,27 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
                     });
                 };
 
-                room.game_state = GAME_STATES.game_over;
+                game.game_state = GAME_STATES.game_over;
+                await game.save();
             };
 
+            // TODO: timer logic
             // start the timer of the person who is about to move, but only if game is not over
             // if (room.game_state === GAME_STATES.playing) {
-            const indexOfPlayerAboutToMove = indexOfPlayerWhoJustMoved === 1 ? 0 : 1;
-            room.players[indexOfPlayerAboutToMove].timer.start();
+            // const indexOfPlayerAboutToMove = indexOfPlayerWhoJustMoved === 1 ? 0 : 1;
+            // room.players[indexOfPlayerAboutToMove].timer.start();
 
-            // sync their timers
-            const whiteTimeLeft = room.players[0].is_white ? room.players[0].timer.getTimeLeft() : room.players[1].timer.getTimeLeft();
-            const blackTimeLeft = room.players[0].is_white ? room.players[1].timer.getTimeLeft() : room.players[0].timer.getTimeLeft();
-            console.log(`White has ${whiteTimeLeft}s; black has ${blackTimeLeft}s.`);
-            io.to(roomId).emit("syncTime", { whiteTimeLeft, blackTimeLeft });
+            // // sync their timers
+            // const whiteTimeLeft = room.players[0].is_white ? room.players[0].timer.getTimeLeft() : room.players[1].timer.getTimeLeft();
+            // const blackTimeLeft = room.players[0].is_white ? room.players[1].timer.getTimeLeft() : room.players[0].timer.getTimeLeft();
+            // console.log(`White has ${whiteTimeLeft}s; black has ${blackTimeLeft}s.`);
+            // io.to(roomId).emit("syncTime", { whiteTimeLeft, blackTimeLeft });
             // };
         } else {
             // only need to broadcast to person who made invalid move
             socket.emit("invalidMove");
         }
     } else {
-        console.log(`Room ${roomId}, player ${socket.id}: cannot move pieces when not in a playing game state.`);
+        console.log(`Room ${roomId}, player ${playerId}: cannot move pieces when not in a playing game state.`);
     }
 }
