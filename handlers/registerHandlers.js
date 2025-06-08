@@ -9,14 +9,14 @@ const makeMove = require("./gameHandlers/makeMove");
 const disconnect = require("./gameHandlers/disconnect");
 const requestRoomsLookingForMatch = require("./gameHandlers/requestRoomsLookingForMatch");
 
-module.exports = function registerHandlers(socket, io, rooms, activePlayersrooms) {
+module.exports = function registerHandlers(socket, io) {
     // register game handlers
-    socket.on("joinRoom", joinRoom(socket, io, rooms, activePlayersrooms));
-    socket.on("placeBomb", placeBomb(socket, io, rooms, activePlayersrooms));
-    socket.on("makeMove", makeMove(socket, io, rooms, activePlayersrooms));
-    socket.on("playerDisconnect", disconnect(socket, io, rooms, activePlayersrooms));
-    socket.on("cancelRoom", cancelRoom(socket, io, rooms, activePlayersrooms));
-    socket.on("createRoom", createRoom(socket, io, rooms, activePlayersrooms));
-    socket.on("disconnect", disconnect(socket, io, rooms, activePlayersrooms));
+    socket.on("joinRoom", joinRoom(socket, io));
+    socket.on("placeBomb", placeBomb(io));
+    socket.on("makeMove", makeMove(socket, io));
+    socket.on("playerDisconnect", disconnect(socket, io));
+    socket.on("cancelRoom", cancelRoom(socket, io));
+    socket.on("createRoom", createRoom(socket, io));
+    socket.on("disconnect", disconnect(socket, io));
     socket.on("requestRoomsLookingForMatch", requestRoomsLookingForMatch(socket, rooms));
 };

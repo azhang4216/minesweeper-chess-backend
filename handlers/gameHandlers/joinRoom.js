@@ -1,9 +1,6 @@
 const { GAME_STATES } = require("../../constants/gameStates");
 // const { CountdownTimer, randomlyFillBombs } = require("../../helpers");
-const { 
-    ActiveGame,
-    User
-} = require("../../models");
+const { ActiveGame, User } = require("../../models");
 
 module.exports = (socket, io) => async (gameId, playerId, playerIsGuest, callback) => {
     console.log(`User ${playerId} is trying to join game ${gameId}...`);
