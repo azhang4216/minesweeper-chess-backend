@@ -11,6 +11,7 @@ const registerHandlers = require("./handlers/registerHandlers");
 // const handleRedisExpiration = require("./redis/redisExpirationHandler");
 
 const authRoutes = require("./api/auth");
+const profileRoutes = require("./api/profile");
 
 dotenv.config();
 
@@ -61,6 +62,7 @@ app.use(cors(corsOptions));
 
 // mount the api routes
 app.use("/api", authRoutes);
+app.use("/api/profile", profileRoutes);
 
 const server = http.createServer(app);
 
