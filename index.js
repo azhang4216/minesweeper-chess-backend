@@ -1,1 +1,1 @@
-const { server } = require("./server");
+import { server } from "./server.js";

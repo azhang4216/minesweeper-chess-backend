@@ -1,19 +1,18 @@
 // game handlers
-const cancelRoom = require("./gameHandlers/cancelRoom");
-const createRoom = require("./gameHandlers/createRoom");
-const joinRoom = require("./gameHandlers/joinRoom");
-const placeBomb = require("./gameHandlers/placeBomb");
-const makeMove = require("./gameHandlers/makeMove");
+import cancelRoom from "./gameHandlers/cancelRoom.js";
+import createRoom from "./gameHandlers/createRoom.js";
+import joinRoom from "./gameHandlers/joinRoom.js";
+import placeBomb from "./gameHandlers/placeBomb.js";
+import makeMove from "./gameHandlers/makeMove.js";
 
 // game match handlers
-const disconnect = require("./gameHandlers/disconnect");
-const requestRoomsLookingForMatch = require("./gameHandlers/requestRoomsLookingForMatch");
+import disconnect from "./gameHandlers/disconnect.js";
+import requestRoomsLookingForMatch from "./gameHandlers/requestRoomsLookingForMatch.js";
 
 // login / reconnection handlers
-// const login = require("./loginHandlers")
-const rejoinRoom = require("./loginHandlers/rejoinRoom");
+import rejoinRoom from "./loginHandlers/rejoinRoom.js";
 
-module.exports = function registerHandlers(socket, io, rooms, activePlayerRooms, disconnectTimers, timeoutTimers) {
+const registerHandlers = function(socket, io, rooms, activePlayerRooms, disconnectTimers, timeoutTimers) {
     // register game handlers
     socket.on("joinRoom", joinRoom(socket, io, rooms, activePlayerRooms));
     socket.on("placeBomb", placeBomb(socket, io, rooms, activePlayerRooms));
@@ -27,3 +26,5 @@ module.exports = function registerHandlers(socket, io, rooms, activePlayerRooms,
     // register rejoin / reconnection handlers
     socket.on("rejoin", rejoinRoom(socket, activePlayerRooms, disconnectTimers));
 };
+
+export default registerHandlers;

@@ -33,4 +33,4 @@ function randomlyFillBombs(room) {
     return room.players[0].is_white ? [room.players[0].bombs, room.players[1].bombs] : [room.players[1].bombs, room.players[0].bombs];
 };
 
-module.exports = randomlyFillBombs;
+export default randomlyFillBombs;

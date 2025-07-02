@@ -1,4 +1,4 @@
-module.exports = (socket, activePlayerRooms, disconnectTimers) => (playerId) => {
+const rejoinRoom = (socket, activePlayerRooms, disconnectTimers) => (playerId) => {
     try {
         // set playerId on socket data
         socket.data.playerId = playerId;
@@ -21,3 +21,5 @@ module.exports = (socket, activePlayerRooms, disconnectTimers) => (playerId) => 
         socket.emit("error", "Rejoin failed");
     }
 };
+
+export default rejoinRoom;

@@ -1,6 +1,6 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const { User, Game } = require("../models");
+import { User } from "../models/index.js";
 
 // Get profile info by userId
 router.get("/:userId", async (req, res) => {
@@ -73,4 +73,4 @@ router.delete("/:userId", async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

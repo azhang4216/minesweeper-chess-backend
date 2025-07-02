@@ -1,12 +1,13 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jwt-simple';  // transmit info as a digitally signed string
+import jwt from 'jwt-simple'; // transmit info as a digitally signed string
 
-import Filter from 'bad-words';
-import { User } from '../models';
-import { RESPONSE_CODES } from '../constants';
+import { Filter } from 'bad-words';
+import { User } from '../models/index.js';
+import { RESPONSE_CODES } from '../constants/index.js';
 
 const filter = new Filter();
 const JWT_SECRET = process.env.JWT_SECRET;
+
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 

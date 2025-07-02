@@ -1,8 +1,8 @@
-const { Chess } = require("chess.js");
-const { GAME_STATES } = require("../../constants/gameStates");
-const { CountdownTimer, randomlyFillBombs } = require("../../helpers");
+import { Chess } from "chess.js";
+import { GAME_STATES } from "../../constants/index.js";
+import { CountdownTimer, randomlyFillBombs } from "../../helpers/index.js";
 
-module.exports = (socket, io, games, activePlayers) => (roomId, callback) => {
+const joinRoom = (socket, io, games, activePlayers) => (roomId, callback) => {
     const playerId = socket.data.playerId;
 
     if (!playerId) {
@@ -81,3 +81,5 @@ module.exports = (socket, io, games, activePlayers) => (roomId, callback) => {
         secsToPlay: room.time_control,
     });
 };
+
+export default joinRoom;

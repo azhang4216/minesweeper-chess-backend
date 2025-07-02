@@ -1,17 +1,17 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
 // const { Redis } = require("@upstash/redis");    // for normal redis commands
 // const IORedis = require("ioredis");             // for pub sub
-const dotenv = require("dotenv");
-const { mongoose } = require("mongoose");
-const cors = require("cors");
+import dotenv from "dotenv";
+import { mongoose } from "mongoose";
+import cors from "cors";
 
-const registerHandlers = require("./handlers/registerHandlers");
+import registerHandlers from "./handlers/registerHandlers.js";
 // const handleRedisExpiration = require("./redis/redisExpirationHandler");
 
-const authRoutes = require("./api/auth");
-const profileRoutes = require("./api/profile");
+import authRoutes from "./api/auth.js";
+import profileRoutes from "./api/profile.js";
 
 dotenv.config();
 
@@ -136,4 +136,4 @@ io.on("connection", (socket) => {
     registerHandlers(socket, io, rooms, activePlayers, disconnectTimers, timeoutTimers);
 });
 
-module.exports = { server };
+export { server };

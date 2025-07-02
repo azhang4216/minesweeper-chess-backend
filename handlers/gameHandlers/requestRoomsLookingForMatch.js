@@ -1,7 +1,6 @@
-const { GAME_STATES } = require("../../constants/gameStates");
-// const util = require('util')
+import { GAME_STATES } from "../../constants/index.js";
 
-module.exports = (socket, rooms) => (callback) => {
+const requestRoomsLookingForMatch = (socket, rooms) => (callback) => {
     // testing - logging all rooms
     // console.log(util.inspect(rooms, { showHidden: false, depth: null, colors: true }));
 
@@ -21,3 +20,5 @@ module.exports = (socket, rooms) => (callback) => {
         rooms: matchingRooms
     });
 };
+
+export default requestRoomsLookingForMatch;

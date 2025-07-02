@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const activePlayersSchema = new mongoose.Schema({
     playerId: { type: String, required: true }, // username if not guest, UUID if guest
@@ -6,4 +6,4 @@ const activePlayersSchema = new mongoose.Schema({
     roomId: { type: String, required: false }
 });
 
-module.exports = mongoose.model("ActivePlayer", activePlayersSchema);
+export default mongoose.model("ActivePlayer", activePlayersSchema);

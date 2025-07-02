@@ -1,7 +1,7 @@
-const { GAME_STATES } = require("../../constants/gameStates");
-const { userController } = require("../../controllers");
+import { GAME_STATES } from "../../constants/index.js";
+import { userController } from "../../controllers/index.js";
 
-module.exports = (socket, games, activePlayers) => async ({roomId, timeControl}, callback) => {
+const createRoom = (socket, games, activePlayers) => async ({roomId, timeControl}, callback) => {
     const playerId = socket.data.playerId;
     console.log(`User ${playerId} is trying to create room ${roomId} with ${timeControl} second time control.`);
 
@@ -50,3 +50,5 @@ module.exports = (socket, games, activePlayers) => async ({roomId, timeControl},
         message: "Room created. Waiting for opponent..."
     });
 };
+
+export default createRoom;

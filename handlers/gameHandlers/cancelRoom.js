@@ -1,4 +1,4 @@
-module.exports = (socket, games, activePlayers) => ({ roomId }, callback) => {
+const cancelRoom = (socket, games, activePlayers) => ({ roomId }, callback) => {
     const playerId = socket.data.playerId;
     console.log(`Player ${playerId} is trying to cancel room ID: ${roomId}.`);
 
@@ -34,3 +34,5 @@ module.exports = (socket, games, activePlayers) => ({ roomId }, callback) => {
         message: "Successfully cancelled game."
     });
 };
+
+export default cancelRoom;

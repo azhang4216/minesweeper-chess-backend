@@ -1,5 +1,5 @@
-import { ActivePlayer } from '../models';
-import { RESPONSE_CODES } from '../constants';
+import { ActivePlayer } from '../models/index.js';
+import { RESPONSE_CODES } from '../constants/index.js';
 
 /**
  * @description retrieves user object

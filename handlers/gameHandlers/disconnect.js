@@ -1,6 +1,6 @@
-const { calculateElo } = require("../../helpers");
+import { calculateElo } from "../../helpers/index.js";
 
-module.exports = (socket, io, games, activePlayers, disconnectTimers) => () => {
+const disconnect = (socket, io, games, activePlayers, disconnectTimers) => () => {
     const playerId = socket.data.playerId;
     if (!playerId) return;
 
@@ -54,3 +54,5 @@ module.exports = (socket, io, games, activePlayers, disconnectTimers) => () => {
     console.log(`Active games: ${JSON.stringify(games)}`);
     console.log(`Active players: ${JSON.stringify(activePlayers)}`);
 }
+
+export default disconnect;

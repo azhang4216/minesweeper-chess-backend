@@ -1,4 +1,4 @@
-const {
+import {
     // Chess,
     // Piece,
     WHITE,
@@ -7,9 +7,9 @@ const {
     // QUEEN,
     // KNIGHT,
     // PAWN, 
-} = require("chess.js");
-const { GAME_STATES } = require("../../constants/gameStates");
-const { calculateElo, CountdownTimer } = require("../../helpers");
+} from "chess.js";
+import { GAME_STATES } from "../../constants/index.js";
+import { calculateElo, CountdownTimer } from "../../helpers/index.js";
 
 // const handleTimerLogic = async (io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved) => {
 //     const timerKeyOfPlayerWhoJustMoved = `player_timer:${roomId}:${isPlayerWhoJustMovedWhite ? "white" : "black"}`;
@@ -47,7 +47,7 @@ const { calculateElo, CountdownTimer } = require("../../helpers");
 // };
 
 
-module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {
+const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {
     const playerId = socket.data.playerId;
     if (!playerId) return;
     
@@ -273,3 +273,5 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
         console.log(`Room ${roomId}, player ${playerId}: cannot move pieces when not in a playing game state.`);
     }
 }
+
+export default makeMove;

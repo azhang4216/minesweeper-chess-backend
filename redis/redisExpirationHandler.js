@@ -1,5 +1,5 @@
-const { GAME_STATES } = require("../socket/gameStates");
-const { eloRatingChange } = require("../helpers/calculateElo");
+import { GAME_STATES } from "../socket/gameStates";
+import { eloRatingChange } from "../helpers/calculateElo";
 
 function fillBombs(games, roomId) {
     const room = games[roomId];
@@ -42,7 +42,7 @@ function fillBombs(games, roomId) {
  * @param {Server} io - The Socket.IO server instance.
  * @returns {function} - A callback function to handle Redis pmessage events.
  */
-module.exports = function handleRedisExpiration(io, redis, games, _activePlayers) {
+const handleRedisExpiration = function handleRedisExpiration(io, redis, games, _activePlayers) {
     return async (pattern, channel, message) => {
         console.log(`Redis key expired: ${pattern}; ${channel}, ${message}`);
 
@@ -115,3 +115,5 @@ module.exports = function handleRedisExpiration(io, redis, games, _activePlayers
         }
     };
 };
+
+export default handleRedisExpiration;

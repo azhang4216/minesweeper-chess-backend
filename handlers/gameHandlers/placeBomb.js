@@ -1,6 +1,6 @@
-const { GAME_STATES } = require("../../constants/gameStates");
+import { GAME_STATES } from "../../constants/index.js";
 
-module.exports = (socket, io, games, activePlayers) => (square) => {
+const placeBomb = (socket, io, games, activePlayers) => (square) => {
     const playerId = socket.data.playerId;
     if (!playerId) return;
     
@@ -40,3 +40,5 @@ module.exports = (socket, io, games, activePlayers) => (square) => {
         console.log(`User ${playerId} from room ${roomId} is trying to place bombs when they're not supposed to.`)
     }
 }
+
+export default placeBomb;
