@@ -113,7 +113,7 @@ const io = new Server(server, {
 */
 const rooms = {};
 
-// key: socket id, val: room id assigned
+// key: player id, val: room id assigned
 const activePlayers = {};    // includes people playing and people in the queue
 
 // 🔔 Subscribe to key expiration events
@@ -123,9 +123,17 @@ const activePlayers = {};    // includes people playing and people in the queue
 
 // redisSubscriber.on("pmessage", handleRedisExpiration(io, redis, games, activePlayers));
 
+// key: player id, val: setTimeout timer
+// this is used to track players who disconnect and give them a chance to rejoin
+const disconnectTimers = {};
+
+// key: player id, val: setTimeout timer
+// this is used to track players who have ended their turns
+const timeoutTimers = {};
+
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-    registerHandlers(socket, io, rooms, activePlayers);
+    registerHandlers(socket, io, rooms, activePlayers, disconnectTimers, timeoutTimers);
 });
 
 module.exports = { server };

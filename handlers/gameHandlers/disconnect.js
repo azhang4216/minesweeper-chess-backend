@@ -1,39 +1,55 @@
-module.exports = (socket, io, games, activePlayers) => () => {
-    console.log("User disconnected:", socket.id);
+const { calculateElo } = require("../../helpers");
 
-    const roomId = activePlayers[socket.id];
+module.exports = (socket, io, games, activePlayers, disconnectTimers) => () => {
+    const playerId = socket.data.playerId;
+    if (!playerId) return;
+
+    console.log(`Player ${playerId} disconnected.`);
+
+    const roomId = activePlayers[playerId];
     if (!roomId) return;
 
-    const room = games[roomId];
-    if (!room) return;
+    const timeoutMs = 30000; // 30 seconds
 
-    games[roomId]["players"].forEach((player, _index, _array) => {
-        delete activePlayers[player.user_id];
-        console.log(`Removed player ${player.user_id}, room ${roomId}, from active players.`);
-    });
-
-    // get rid of all associated keys
-    // const valOfBombTimerInRoom = await redis.getdel(`bomb_timer:${roomId}`);
-    // const valOfWTimerInRoom = await redis.getdel(`player_timer:${roomId}:white`);
-    // const valOfBTimerInRoom = await redis.getdel(`player_timer:${roomId}:black`);
-
-    // if (valOfBombTimerInRoom === "") {
-    //     console.log(`Removed the active bomb timer expiry key from room ${roomId}`);
-    // };
-    // if (valOfWTimerInRoom === "") {
-    //     console.log(`Removed the active white timer expiry key from room ${roomId}`);
-    // };
-    // if (valOfBTimerInRoom === "") {
-    //     console.log(`Removed the active black timer expiry key from room ${roomId}`);
-    // };
-
-    // TODO: persistent game recording in DB
-    delete games[roomId];
-
+    // notify the other player of disconnection
     io.to(roomId).emit("playerDisconnected", {
-        roomId,
-        message: `Player ${socket.id} disconnected from game room ${roomId}.`
+        disconnectedPlayerId: playerId,
+        timeoutMs,
+        message: `Player ${playerId} disconnected from game room ${roomId}.`
     });
+
+    // start a grace period timeout (30 seconds)
+    disconnectTimers[playerId] = setTimeout(() => {
+        console.log(`Player ${playerId} did not reconnect in time`);
+
+        // remove from active player tracking
+        delete activePlayerRooms[playerId];
+        delete disconnectTimers[playerId];
+
+        const room = rooms[roomId];
+        if (!room) return;
+
+        // whoever disconnected is the one who lost
+        const loser = room.players.find(p => p.id === playerId);
+        const winnerColor = loser.is_white ? "b" : "w";
+        const [whiteEloChange, blackEloChange] = calculateElo(
+            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
+            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
+            (winnerColor === "w") ? 1 : 0,
+        );
+
+        // end game on forfeit
+        if (roomId) {
+            io.to(roomId).emit("winLossGameOver", {
+                winner: winnerColor,
+                by: "player forefeit",
+                whiteEloChange,
+                blackEloChange,
+            });
+        }
+
+        // TODO: store game in DB
+    }, timeoutMs);
 
     console.log(`Active games: ${JSON.stringify(games)}`);
     console.log(`Active players: ${JSON.stringify(activePlayers)}`);

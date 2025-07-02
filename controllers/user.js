@@ -596,3 +596,14 @@ export const userWithEmailExists = async (email) => {
         throw error;
     }
 };
+
+export const getUserElo = async (userId) => {
+    try {
+        const user = await User.findById(userId);
+        if (!user) return null;
+        return user.elo;
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+};

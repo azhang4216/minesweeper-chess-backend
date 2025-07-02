@@ -1,9 +1,8 @@
-const { GAME_STATES } = require("../../constants/gameStates");
+module.exports = (socket, games, activePlayers) => ({ roomId }, callback) => {
+    const playerId = socket.data.playerId;
+    console.log(`Player ${playerId} is trying to cancel room ID: ${roomId}.`);
 
-module.exports = (socket, io, games, activePlayers) => ({ roomId }, callback) => {
-    console.log(`User ${socket.id} is trying to cancel room ID: ${roomId}.`);
-
-    const roomIdThisPlayerHas = activePlayers[socket.id];
+    const roomIdThisPlayerHas = activePlayers[playerId];
     if (!roomIdThisPlayerHas || roomIdThisPlayerHas !== roomId) {
         // shouldn't happen, but check just in case
         return callback({

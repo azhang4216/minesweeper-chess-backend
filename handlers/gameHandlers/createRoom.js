@@ -1,7 +1,9 @@
 const { GAME_STATES } = require("../../constants/gameStates");
+const { userController } = require("../../controllers");
 
-module.exports = (socket, io, games, activePlayers) => ({roomId, timeControl}, callback) => {
-    console.log(`User ${socket.id} is trying to create room ${roomId} with ${timeControl} second time control.`);
+module.exports = (socket, games, activePlayers) => async ({roomId, timeControl}, callback) => {
+    const playerId = socket.data.playerId;
+    console.log(`User ${playerId} is trying to create room ${roomId} with ${timeControl} second time control.`);
 
     if (roomId in games) {
         return callback({
@@ -20,15 +22,17 @@ module.exports = (socket, io, games, activePlayers) => ({roomId, timeControl}, c
         });
     }
 
+    const playerElo = await userController.getUserElo(playerId);
+
     // valid room creation request: let's create a new room!
     games[roomId] = {
         players: [
             {
                 // TODO: replace id when authentication done for persistence
-                user_id: socket.id,
+                user_id: playerId,
                 is_white: Math.random() < 0.5, // 50% change of being either or
                 bombs: [],
-                elo: 1500,                     // place holder
+                elo: playerElo || 1500,
                 // we will add the timer later, when the second player joins
             }
         ],
@@ -36,10 +40,10 @@ module.exports = (socket, io, games, activePlayers) => ({roomId, timeControl}, c
         time_control: secsToPlay
     };
 
-    activePlayers[socket.id] = roomId;
+    activePlayers[playerId] = roomId;
 
     socket.join(roomId);
-    console.log(`User ${socket.id} started a new room ${roomId}, and is assigned white: ${games[roomId].players[0].is_white}`);
+    console.log(`User ${playerId} started a new room ${roomId}, and is assigned white: ${games[roomId].players[0].is_white}`);
     
     return callback({
         success: true,

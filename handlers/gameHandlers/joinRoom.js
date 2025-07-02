@@ -3,7 +3,16 @@ const { GAME_STATES } = require("../../constants/gameStates");
 const { CountdownTimer, randomlyFillBombs } = require("../../helpers");
 
 module.exports = (socket, io, games, activePlayers) => (roomId, callback) => {
-    console.log(`User ${socket.id} is trying to join room ${roomId}...`);
+    const playerId = socket.data.playerId;
+
+    if (!playerId) {
+        return callback({
+            success: false,
+            message: "Player not authenticated" 
+        });
+    }
+    
+    console.log(`Player ${playerId} is trying to join room ${roomId}...`);
     const room = games[roomId];
 
     if (!room) {
@@ -14,19 +23,19 @@ module.exports = (socket, io, games, activePlayers) => (roomId, callback) => {
         });
     } else if (room.players.length >= 2) {
         // room is full
-        console.log(`User ${socket.id} is trying to join a full room: ${roomId}`)
+        console.log(`User ${playerId} is trying to join a full room: ${roomId}`)
         return callback({
             success: false,
             message: "Room is full. Please try another room."
         });
-    } else if (room.players && socket.id === room.players[0].user_id) {
+    } else if (room.players && playerId === room.players[0].user_id) {
         // for some reason, double registered the same player
-        console.log(`User ${socket.id} is already in room ${roomId}...`);
+        console.log(`User ${playerId} is already in room ${roomId}...`);
     };
 
     // everything checks out - let's pair them for a game!
     room.players.push({
-        user_id: socket.id,
+        user_id: playerId,
         is_white: !room.players[0].is_white,
         bombs: [],
         elo: 1500, // TODO: replace with real elo once profiles feature implemented
@@ -41,8 +50,8 @@ module.exports = (socket, io, games, activePlayers) => (roomId, callback) => {
     room.game_state = GAME_STATES.placing_bombs;
 
     socket.join(roomId);
-    activePlayers[socket.id] = roomId;
-    console.log(`User ${socket.id} is matched, joining room ${roomId}`);
+    activePlayers[playerId] = roomId;
+    console.log(`User ${playerId} is matched, joining room ${roomId}`);
 
     // start timer - 1 minute to place bombs
     const secsToPlaceBomb = 60;

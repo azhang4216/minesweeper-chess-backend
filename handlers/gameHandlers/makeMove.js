@@ -48,13 +48,16 @@ const { calculateElo, CountdownTimer } = require("../../helpers");
 
 
 module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {
-    const roomId = activePlayers[socket.id];
+    const playerId = socket.data.playerId;
+    if (!playerId) return;
+    
+    const roomId = activePlayers[playerId];
     if (!roomId) return;
 
     const room = games[roomId];
     if (!room) return;
 
-    console.log(`${socket.id} trying to make move: ${from} to ${to}.`);
+    console.log(`${playerId} trying to make move: ${from} to ${to}.`);
 
     if (room.game_state === GAME_STATES.playing) {
         let move = null;
@@ -99,7 +102,7 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
 
         const preExplosionFen = room.game.fen();  // for explosion animation purposes
 
-        const indexOfPlayerWhoJustMoved = (room.players[0].user_id === socket.id) ? 0 : 1;
+        const indexOfPlayerWhoJustMoved = (room.players[0].user_id === playerId) ? 0 : 1;
         const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].is_white;
 
         // stop the timer of the person who just moved
@@ -267,6 +270,6 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
             socket.emit("invalidMove");
         }
     } else {
-        console.log(`Room ${roomId}, player ${socket.id}: cannot move pieces when not in a playing game state.`);
+        console.log(`Room ${roomId}, player ${playerId}: cannot move pieces when not in a playing game state.`);
     }
 }
