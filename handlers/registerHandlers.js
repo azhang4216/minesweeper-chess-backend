@@ -23,8 +23,12 @@ const registerHandlers = function(socket, io, rooms, activePlayerRooms, disconne
     socket.on("disconnect", disconnect(socket, io, rooms, activePlayerRooms, disconnectTimers));
     socket.on("requestRoomsLookingForMatch", requestRoomsLookingForMatch(socket, rooms));
 
-    // register rejoin / reconnection handlers
+    // register join / reconnection handlers
     socket.on("rejoin", rejoinRoom(socket, activePlayerRooms, disconnectTimers));
+    socket.on("authenticate", ({ playerId }) => {
+        socket.data.playerId = playerId;
+        console.log("Socket authenticated as", playerId);
+    });
 };
 
 export default registerHandlers;

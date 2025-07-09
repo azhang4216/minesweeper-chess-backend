@@ -133,6 +133,27 @@ export const getUserById = async (id) => {
 };
 
 /**
+ * @description retrieves user object
+ * @param {String} username 
+ * @returns {Promise<User>} promise that resolves to user object or error
+ */
+export const getUserByUsername = async (username) => {
+    try {
+        const user = await User.findOne({ username });
+        if (user) {
+            return {
+                ...RESPONSE_CODES.SUCCESS,
+                user,
+            };
+        }
+        return RESPONSE_CODES.NOT_FOUND;
+    } catch (error) {
+        console.log(error);
+        return RESPONSE_CODES.NOT_FOUND;
+    }
+};
+
+/**
  * @description deletes user with given id
  * @param {String} id user id
  * @returns {Promise<User>} promise that resolves to success object or error
@@ -598,9 +619,9 @@ export const userWithEmailExists = async (email) => {
     }
 };
 
-export const getUserElo = async (userId) => {
+export const getUserElo = async (username) => {
     try {
-        const user = await User.findById(userId);
+        const user = await getUserByUsername(username);
         if (!user) return null;
         return user.elo;
     } catch (error) {
