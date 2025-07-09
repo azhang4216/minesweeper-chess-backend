@@ -1,5 +1,6 @@
 const rejoinRoom = (socket, activePlayerRooms, disconnectTimers) => (playerId) => {
     try {
+        console.log(`Player ${playerId} rejoined`);
         // set playerId on socket data
         socket.data.playerId = playerId;
 
