@@ -26,4 +26,4 @@ function eloRatingChange(whiteRating, blackRating, outcome, K=30) {
     return [whiteRatingChange, blackRatingChange];
 };
 
-module.exports = eloRatingChange;
+export default eloRatingChange;

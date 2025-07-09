@@ -1,3 +1,4 @@
-module.exports.calculateElo = require('./calculateElo.js');
-module.exports.CountdownTimer = require('./CountdownTimer.js');
-module.exports.randomlyFillBombs = require('./randomlyFillBombs.js');
+export { default as calculateElo } from './calculateElo.js';
+export { default as CountdownTimer } from './CountdownTimer.js';
+export { default as randomlyFillBombs } from './randomlyFillBombs.js';
+export { default as finishAndRecordGame } from './endGame.js';

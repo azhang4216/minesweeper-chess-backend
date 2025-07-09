@@ -1,7 +1,7 @@
-const userController = require('./user');
-const activePlayerController = require('./activePlayer');
+import * as userController from './user.js';
+import * as activePlayerController from './activePlayer.js';
 
-module.exports = {
+export {
     userController,
     activePlayerController,
 };

@@ -1,4 +1,4 @@
-{
+export default{
     "SUCCESS": {
         "status": 200,
         "type": "SUCCESS"

@@ -6,4 +6,4 @@ const GAME_STATES = {
     game_over: "GAME_OVER"
 };
 
-module.exports = { GAME_STATES };
+export default GAME_STATES;

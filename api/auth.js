@@ -1,14 +1,14 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const {
+import {
     ActivePlayer,
     User
-} = require("../models");
-const bcrypt = require("bcryptjs");
-const { v4: uuidv4 } = require('uuid');
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+} from "../models/index.js";
+import bcrypt from "bcryptjs";
+import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_EXPIRATION = process.env.TOKEN_EXPIRATION
@@ -238,4 +238,4 @@ router.get('/guest-uuid', async (_req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

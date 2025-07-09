@@ -1,12 +1,13 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jwt-simple';  // transmit info as a digitally signed string
+import jwt from 'jwt-simple'; // transmit info as a digitally signed string
 
-import Filter from 'bad-words';
-import { User } from '../models';
-import { RESPONSE_CODES } from '../constants';
+import { Filter } from 'bad-words';
+import { User } from '../models/index.js';
+import { RESPONSE_CODES } from '../constants/index.js';
 
 const filter = new Filter();
 const JWT_SECRET = process.env.JWT_SECRET;
+
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 
@@ -118,6 +119,27 @@ export const getUserByEmail = async (email) => {
 export const getUserById = async (id) => {
     try {
         const user = await User.findOne({ _id: id });
+        if (user) {
+            return {
+                ...RESPONSE_CODES.SUCCESS,
+                user,
+            };
+        }
+        return RESPONSE_CODES.NOT_FOUND;
+    } catch (error) {
+        console.log(error);
+        return RESPONSE_CODES.NOT_FOUND;
+    }
+};
+
+/**
+ * @description retrieves user object
+ * @param {String} username 
+ * @returns {Promise<User>} promise that resolves to user object or error
+ */
+export const getUserByUsername = async (username) => {
+    try {
+        const user = await User.findOne({ username });
         if (user) {
             return {
                 ...RESPONSE_CODES.SUCCESS,
@@ -591,6 +613,17 @@ export const userWithEmailExists = async (email) => {
     try {
         const user = await getUserByEmail(email);
         return user !== RESPONSE_CODES.NOT_FOUND;
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+};
+
+export const getUserElo = async (username) => {
+    try {
+        const user = await getUserByUsername(username);
+        if (!user) return null;
+        return user.elo;
     } catch (error) {
         console.log(error);
         throw error;

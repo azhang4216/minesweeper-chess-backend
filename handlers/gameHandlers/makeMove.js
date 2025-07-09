@@ -1,4 +1,4 @@
-const {
+import {
     // Chess,
     // Piece,
     WHITE,
@@ -7,9 +7,9 @@ const {
     // QUEEN,
     // KNIGHT,
     // PAWN, 
-} = require("chess.js");
-const { GAME_STATES } = require("../../constants/gameStates");
-const { calculateElo, CountdownTimer } = require("../../helpers");
+} from "chess.js";
+import { GAME_STATES } from "../../constants/index.js";
+import { calculateElo, CountdownTimer } from "../../helpers/index.js";
 
 // const handleTimerLogic = async (io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved) => {
 //     const timerKeyOfPlayerWhoJustMoved = `player_timer:${roomId}:${isPlayerWhoJustMovedWhite ? "white" : "black"}`;
@@ -47,14 +47,17 @@ const { calculateElo, CountdownTimer } = require("../../helpers");
 // };
 
 
-module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {
-    const roomId = activePlayers[socket.id];
+const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {
+    const playerId = socket.data.playerId;
+    if (!playerId) return;
+
+    const roomId = activePlayers[playerId];
     if (!roomId) return;
 
     const room = games[roomId];
     if (!room) return;
 
-    console.log(`${socket.id} trying to make move: ${from} to ${to}.`);
+    console.log(`${playerId} trying to make move: ${from} to ${to}.`);
 
     if (room.game_state === GAME_STATES.playing) {
         let move = null;
@@ -99,7 +102,7 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
 
         const preExplosionFen = room.game.fen();  // for explosion animation purposes
 
-        const indexOfPlayerWhoJustMoved = (room.players[0].user_id === socket.id) ? 0 : 1;
+        const indexOfPlayerWhoJustMoved = (room.players[0].user_id === playerId) ? 0 : 1;
         const isPlayerWhoJustMovedWhite = room.players[indexOfPlayerWhoJustMoved].is_white;
 
         // stop the timer of the person who just moved
@@ -142,6 +145,12 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
                 specialMove,
                 sideToMoveNext: room.game.turn(),
                 preExplosionFen   // different from gameFen only if explosion happened
+            });
+
+            // for highlighting squares
+            io.to(roomId).emit("movePlayed", {
+                from,
+                to
             });
 
             const isWhiteKingMissing = room.game.findPiece({ type: KING, color: WHITE }).length == 0;
@@ -252,9 +261,14 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
             };
 
             // start the timer of the person who is about to move, but only if game is not over
-            // if (room.game_state === GAME_STATES.playing) {
-            const indexOfPlayerAboutToMove = indexOfPlayerWhoJustMoved === 1 ? 0 : 1;
-            room.players[indexOfPlayerAboutToMove].timer.start();
+            if (room.game_state === GAME_STATES.playing) {
+                const indexOfPlayerAboutToMove = indexOfPlayerWhoJustMoved === 1 ? 0 : 1;
+                room.players[indexOfPlayerAboutToMove].timer.start();
+            } else {
+                // Optionally, pause both timers to be extra safe
+                room.players[0].timer.pause();
+                room.players[1].timer.pause();
+            }
 
             // sync their timers
             const whiteTimeLeft = room.players[0].is_white ? room.players[0].timer.getTimeLeft() : room.players[1].timer.getTimeLeft();
@@ -267,6 +281,8 @@ module.exports = (socket, io, games, activePlayers) => ({ from, to, promotion })
             socket.emit("invalidMove");
         }
     } else {
-        console.log(`Room ${roomId}, player ${socket.id}: cannot move pieces when not in a playing game state.`);
+        console.log(`Room ${roomId}, player ${playerId}: cannot move pieces when not in a playing game state.`);
     }
 }
+
+export default makeMove;

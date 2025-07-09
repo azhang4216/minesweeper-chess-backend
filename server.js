@@ -1,16 +1,17 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
 // const { Redis } = require("@upstash/redis");    // for normal redis commands
 // const IORedis = require("ioredis");             // for pub sub
-const dotenv = require("dotenv");
-const { mongoose } = require("mongoose");
-const cors = require("cors");
+import dotenv from "dotenv";
+import { mongoose } from "mongoose";
+import cors from "cors";
 
-const registerHandlers = require("./handlers/registerHandlers");
+import registerHandlers from "./handlers/registerHandlers.js";
 // const handleRedisExpiration = require("./redis/redisExpirationHandler");
 
-const authRoutes = require("./api/auth");
+import authRoutes from "./api/auth.js";
+import profileRoutes from "./api/profile.js";
 
 dotenv.config();
 
@@ -61,6 +62,7 @@ app.use(cors(corsOptions));
 
 // mount the api routes
 app.use("/api", authRoutes);
+app.use("/api/profile", profileRoutes);
 
 const server = http.createServer(app);
 
@@ -111,7 +113,7 @@ const io = new Server(server, {
 */
 const rooms = {};
 
-// key: socket id, val: room id assigned
+// key: player id, val: room id assigned
 const activePlayers = {};    // includes people playing and people in the queue
 
 // 🔔 Subscribe to key expiration events
@@ -121,9 +123,17 @@ const activePlayers = {};    // includes people playing and people in the queue
 
 // redisSubscriber.on("pmessage", handleRedisExpiration(io, redis, games, activePlayers));
 
+// key: player id, val: setTimeout timer
+// this is used to track players who disconnect and give them a chance to rejoin
+const disconnectTimers = {};
+
+// key: player id, val: setTimeout timer
+// this is used to track players who have ended their turns
+const timeoutTimers = {};
+
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-    registerHandlers(socket, io, rooms, activePlayers);
+    registerHandlers(socket, io, rooms, activePlayers, disconnectTimers, timeoutTimers);
 });
 
-module.exports = { server };
+export { server };

@@ -1,8 +1,8 @@
-const ActivePlayer = require("./activePlayer");
-const User = require("./user");
-const VerificationToken = require("./verificationToken");
+import ActivePlayer from "./activePlayer.js";
+import User from "./user.js";
+import VerificationToken from "./verificationToken.js";
 
-module.exports = {
+export {
     ActivePlayer,
     User,
     VerificationToken
