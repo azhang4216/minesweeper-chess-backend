@@ -1,8 +1,7 @@
 import { GAME_STATES } from "../../constants/index.js";
 
 const requestRoomsLookingForMatch = (socket, rooms) => (callback) => {
-    // testing - logging all rooms
-    // console.log(util.inspect(rooms, { showHidden: false, depth: null, colors: true }));
+    console.log(`Player ${socket.data.playerId} is requesting rooms looking for match`);
 
     const matchingRooms = Object.entries(rooms)
         .filter(([_, room]) => room.game_state === GAME_STATES.matching)
@@ -11,9 +10,8 @@ const requestRoomsLookingForMatch = (socket, rooms) => (callback) => {
             elo: room.players[0].elo,
             time_control: room.time_control
         }));
-
-    // testing - logging filtered rooms to send back to frontend
-    // console.log(util.inspect(matchingRooms, { showHidden: false, depth: null, colors: true }));
+    
+    console.log(`Found ${matchingRooms.length} rooms looking for match`);
 
     return callback({
         success: true,

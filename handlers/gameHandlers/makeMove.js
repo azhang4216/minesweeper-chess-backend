@@ -50,7 +50,7 @@ import { calculateElo, CountdownTimer } from "../../helpers/index.js";
 const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion }) => {
     const playerId = socket.data.playerId;
     if (!playerId) return;
-    
+
     const roomId = activePlayers[playerId];
     if (!roomId) return;
 
@@ -145,6 +145,12 @@ const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion })
                 specialMove,
                 sideToMoveNext: room.game.turn(),
                 preExplosionFen   // different from gameFen only if explosion happened
+            });
+
+            // for highlighting squares
+            io.to(roomId).emit("movePlayed", {
+                from,
+                to
             });
 
             const isWhiteKingMissing = room.game.findPiece({ type: KING, color: WHITE }).length == 0;
@@ -255,9 +261,14 @@ const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion })
             };
 
             // start the timer of the person who is about to move, but only if game is not over
-            // if (room.game_state === GAME_STATES.playing) {
-            const indexOfPlayerAboutToMove = indexOfPlayerWhoJustMoved === 1 ? 0 : 1;
-            room.players[indexOfPlayerAboutToMove].timer.start();
+            if (room.game_state === GAME_STATES.playing) {
+                const indexOfPlayerAboutToMove = indexOfPlayerWhoJustMoved === 1 ? 0 : 1;
+                room.players[indexOfPlayerAboutToMove].timer.start();
+            } else {
+                // Optionally, pause both timers to be extra safe
+                room.players[0].timer.pause();
+                room.players[1].timer.pause();
+            }
 
             // sync their timers
             const whiteTimeLeft = room.players[0].is_white ? room.players[0].timer.getTimeLeft() : room.players[1].timer.getTimeLeft();

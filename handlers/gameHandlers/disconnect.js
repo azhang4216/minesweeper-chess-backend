@@ -23,10 +23,10 @@ const disconnect = (socket, io, games, activePlayers, disconnectTimers) => () =>
         console.log(`Player ${playerId} did not reconnect in time`);
 
         // remove from active player tracking
-        delete activePlayerRooms[playerId];
+        delete activePlayers[playerId];
         delete disconnectTimers[playerId];
 
-        const room = rooms[roomId];
+        const room = games[roomId];
         if (!room) return;
 
         // whoever disconnected is the one who lost
@@ -51,8 +51,15 @@ const disconnect = (socket, io, games, activePlayers, disconnectTimers) => () =>
         // TODO: store game in DB
     }, timeoutMs);
 
-    console.log(`Active games: ${JSON.stringify(games)}`);
-    console.log(`Active players: ${JSON.stringify(activePlayers)}`);
+    // Custom replacer to handle BigInt serialization
+    const safeStringify = (obj) =>
+        JSON.stringify(obj, (_key, value) =>
+            typeof value === "bigint" ? value.toString() : value
+        );
+
+    console.log(`Active games: ${safeStringify(games)}`);
+    console.log(`Active players: ${safeStringify(activePlayers)}`);
+
 }
 
 export default disconnect;

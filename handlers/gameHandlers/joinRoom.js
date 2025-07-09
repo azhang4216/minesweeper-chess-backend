@@ -61,7 +61,7 @@ const joinRoom = (socket, io, games, activePlayers) => (roomId, callback) => {
     room.bomb_timer = new CountdownTimer(secsToPlaceBomb, () => {
         if (room && room.game_state === GAME_STATES.placing_bombs) {
             // someone hasn't finished placing bombs yet! so we place them for them, and start the game!
-            [whitePlayerBombs, blackPlayerBombs] = randomlyFillBombs(room);
+            const [whitePlayerBombs, blackPlayerBombs] = randomlyFillBombs(room);
             io.to(roomId).emit("startPlay", { whitePlayerBombs, blackPlayerBombs });
             room.game_state = GAME_STATES.playing;
         } else {
