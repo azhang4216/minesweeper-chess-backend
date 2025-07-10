@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
-import Filter from 'bad-words';
+import { Filter } from 'bad-words';
 
 const filter = new Filter();
 const JWT_SECRET = process.env.JWT_SECRET;
