@@ -141,10 +141,7 @@ export const getUserByUsername = async (username) => {
     try {
         const user = await User.findOne({ username });
         if (user) {
-            return {
-                ...RESPONSE_CODES.SUCCESS,
-                user,
-            };
+            return user;
         }
         return RESPONSE_CODES.NOT_FOUND;
     } catch (error) {

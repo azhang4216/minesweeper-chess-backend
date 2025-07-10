@@ -1,26 +1,22 @@
 import express from "express";
 const router = express.Router();
-import { User } from "../models";
-import { userController } from "../controllers";
+import { userController } from "../controllers/index.js";
 
 // Get profile info by username
 router.get("/:username", async (req, res) => {
     const { username } = req.params;
     console.log(`Getting profile data for ${username}`);
     try {
-        const user = await User.findOne({ username })
-            .populate("friends", "username")
-            .populate("past_games");
-
+        const user = await userController.getUserByUsername(username);
         if (!user) return res.status(404).json({ error: "User not found" });
 
         res.json({
             username: user.username,
-            email: user.email,
             role: user.role,
             date_joined: user.date_joined,
             elo: user.elo,
             friends: user.friends,
+            friendRequestsReceived: user.friendRequestsReceived,
             past_games: user.past_games,
         });
     } catch (err) {

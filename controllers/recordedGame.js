@@ -1,5 +1,5 @@
-import { RESPONSE_CODES } from '../constants';
-import { RecordedGame, User } from '../models';
+import { RESPONSE_CODES } from '../constants/index.js';
+import { RecordedGame } from '../models/index.js';
 import { userController } from './index.js';
 
 /**
