@@ -48,6 +48,8 @@ router.post("/:username/add-friend", async (req, res) => {
             return res.status(400).json({ error: "Friend request already sent" });
         }
 
+        console.log(`Requesting add friend: ${friendUsername} to user: ${username}`);
+
         // If friend request already received, accept it
         if (user.friendRequestsReceived.includes(friend._id)) {
             // Remove friend from user.friendRequestsReceived
@@ -73,6 +75,9 @@ router.post("/:username/add-friend", async (req, res) => {
 
         await user.save();
         await friend.save();
+
+        console.log(`Friend ${friend.username} friendRequestsReceived: ${friend.friendRequestsReceived}`);
+        console.log(`User ${user.username} friendRequestsSent: ${user.friendRequestsSent}`);
 
         res.json({ message: "Friend added successfully" });
     } catch (err) {
