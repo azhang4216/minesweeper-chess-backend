@@ -9,7 +9,9 @@ import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import Filter from 'bad-words';
 
+const filter = new Filter();
 const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_EXPIRATION = process.env.TOKEN_EXPIRATION
 
@@ -43,6 +45,17 @@ router.post("/create-account", async (req, res) => {
 
     if (!email || !username || !password)
         return res.status(400).json({ error: "Username and password are required" });
+
+    // Username validation
+    if (username.length < 3 || username.length > 20)
+        return res.status(400).json({ error: "Username must be between 3 and 20 characters" });
+
+    if (username.includes(' ') || username.includes('/'))
+        return res.status(400).json({ error: "Username cannot contain spaces or '/'" });
+
+    if (filter.isProfane(username)) {
+        return res.status(400).json({ error: "Username contains inappropriate language" });
+    }
 
     try {
         const existingUsername = await User.findOne({ username });
