@@ -141,10 +141,7 @@ export const getUserByUsername = async (username) => {
     try {
         const user = await User.findOne({ username });
         if (user) {
-            return {
-                ...RESPONSE_CODES.SUCCESS,
-                user,
-            };
+            return user;
         }
         return RESPONSE_CODES.NOT_FOUND;
     } catch (error) {
@@ -169,14 +166,29 @@ export const deleteUser = async (id) => {
 };
 
 /**
+ * @description deletes user with username
+ * @param {String} username
+ * @returns {Promise<User>} promise that resolves to success object or error
+ */
+export const deleteUserByUsername = async (username) => {
+    try {
+        await User.deleteOne({ username });
+        return RESPONSE_CODES.SUCCESS;
+    } catch (error) {
+        console.log(error);
+        return error;
+    }
+};
+
+/**
  * @description adds a game ID to the user's past_games list
- * @param {String} userId
+ * @param {String} username
  * @param {String} gameId
  * @returns {Promise<Object>}
  */
-export const addPastGame = async (userId, gameId) => {
+export const addPastGame = async (username, gameId) => {
     try {
-        const user = await User.findById(userId);
+        const user = await getUserByUsername(username);
         if (!user) return RESPONSE_CODES.NOT_FOUND;
 
         if (!user.past_games.includes(gameId)) {
@@ -192,17 +204,24 @@ export const addPastGame = async (userId, gameId) => {
 };
 
 /**
- * @description updates user's status or ELO rating
- * @param {String} userId
- * @param {Object} updates
+ * @description updates user's ELO rating
+ * @param {String} username
+ * @param {Number} eloChange
  * @returns {Promise<Object>}
  */
-export const updateUserElo = async (userId, updates) => {
+export const updateUserElo = async (username, eloChange) => {
     try {
-        const user = await User.findByIdAndUpdate(userId, updates, { new: true });
+        const user = await getUserByUsername(username);
         if (!user) return RESPONSE_CODES.NOT_FOUND;
 
-        return { ...RESPONSE_CODES.SUCCESS, user };
+        user.elo += eloChange;
+        await user.save();
+
+        return {
+            ...RESPONSE_CODES.SUCCESS,
+            message: `ELO updated by ${eloChange}. New ELO: ${user.elo}`,
+            user,
+        };
     } catch (error) {
         console.log(error);
         return RESPONSE_CODES.SERVER_ERROR;

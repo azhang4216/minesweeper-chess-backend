@@ -31,7 +31,7 @@ const UserSchema = new Schema({
     },
     past_games: [{
         type: Schema.Types.ObjectId,
-        ref: 'Game',
+        ref: 'RecordedGame',
     }],
     friends: [{
         type: Schema.Types.ObjectId,
