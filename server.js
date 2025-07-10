@@ -12,6 +12,7 @@ import registerHandlers from "./handlers/registerHandlers.js";
 
 import authRoutes from "./api/auth.js";
 import profileRoutes from "./api/profile.js";
+import searchRoutes from "./api/search.js";
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.use(cors(corsOptions));
 // mount the api routes
 app.use("/api", authRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/search", searchRoutes);
 
 const server = http.createServer(app);
 
