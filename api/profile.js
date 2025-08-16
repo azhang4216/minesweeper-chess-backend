@@ -2,21 +2,39 @@ import express from "express";
 const router = express.Router();
 import { userController } from "../controllers/index.js";
 
+// Helper to fetch usernames and IDs for a list of user IDs
+async function fetchUsernamesAndIds(userIds) {
+    return await Promise.all(
+        userIds.map(async (id) => {
+            const user = await userController.getUserById(id);
+            return {
+                id,
+                username: user ? user.username : null,
+            };
+        })
+    );
+}
+
 // Get profile info by username
-router.get("/:username", async (req, res) => {
-    const { username } = req.params;
-    console.log(`Getting profile data for ${username}`);
+router.post("/get-profile", async (req, res) => {
+    const { username } = req.body;
+    console.log(`Getting profile data for username ${username}`);
     try {
         const user = await userController.getUserByUsername(username);
         if (!user) return res.status(404).json({ error: "User not found" });
 
+        // Fetch usernames for friendRequestsReceived & friends
+        const friendRequestsReceivedWithIdAndUsername = await fetchUsernamesAndIds(user.friendRequestsReceived);
+        const friendsWithIdAndUsername = await fetchUsernamesAndIds(user.friends);
+
         res.json({
+            _id: user._id,
             username: user.username,
             role: user.role,
             date_joined: user.date_joined,
             elo: user.elo,
-            friends: user.friends,
-            friendRequestsReceived: user.friendRequestsReceived,
+            friends: friendsWithIdAndUsername,
+            friendRequestsReceived: friendRequestsReceivedWithIdAndUsername,
             past_games: user.past_games,
         });
     } catch (err) {
@@ -25,50 +43,35 @@ router.get("/:username", async (req, res) => {
     }
 });
 
-// Add a friend
-router.post("/:username/add-friend", async (req, res) => {
-    const { username } = req.params;
-    const { friendUsername } = req.body;
+// Send a friend request
+router.post("/send-friend-request", async (req, res) => {
+    const { requesteeUsername, requesterUsername } = req.body;
 
-    if (username === friendUsername) return res.status(400).json({ error: "Cannot add yourself" });
+    if (!requesteeUsername || !requesterUsername) return res.status(400).json({ error: "Missing requesteeUsername/requesterUsername" });
 
     try {
-        const user = await userController.getUserByUsername(username);
-        const friend = await userController.getUserByUsername(friendUsername);
+        const user = await userController.getUserByUsername(requesterUsername);
+        const friend = await userController.getUserByUsername(requesteeUsername);
 
         if (!user || !friend) return res.status(404).json({ error: "User not found" });
 
-        // Check if already friends
+        // Friend request logic
         if (user.friends.includes(friend._id)) {
             return res.status(400).json({ error: "Already friends" });
         }
-
-        // Check if friend request already sent
         if (user.friendRequestsSent.includes(friend._id)) {
             return res.status(400).json({ error: "Friend request already sent" });
         }
-
-        console.log(`Requesting add friend: ${friendUsername} to user: ${username}`);
-
-        // If friend request already received, accept it
         if (user.friendRequestsReceived.includes(friend._id)) {
-            // Remove friend from user.friendRequestsReceived
             user.friendRequestsReceived = user.friendRequestsReceived.filter(
                 id => !id.equals(friend._id)
             );
-
-            // Add friend to user.friends
             user.friends.push(friend._id);
-
-            // Remove user from friend.friendRequestsSent
             friend.friendRequestsSent = friend.friendRequestsSent.filter(
                 id => !id.equals(user._id)
             );
-
-            // Add user to friend.friends
             friend.friends.push(user._id);
         } else {
-            // If no existing request, send a new friend request
             user.friendRequestsSent.push(friend._id);
             friend.friendRequestsReceived.push(user._id);
         }
@@ -76,34 +79,26 @@ router.post("/:username/add-friend", async (req, res) => {
         await user.save();
         await friend.save();
 
-        console.log(`Friend ${friend.username} friendRequestsReceived: ${friend.friendRequestsReceived}`);
-        console.log(`User ${user.username} friendRequestsSent: ${user.friendRequestsSent}`);
-
-        res.json({ message: "Friend added successfully" });
+        res.json({ message: "Friend request sent successfully" });
     } catch (err) {
-        console.error("Error adding friend:", err);
+        console.error("Error sending friend request:", err);
         res.status(500).json({ error: "Server error" });
     }
 });
 
 // Accept a friend request
-router.post("/:username/accept-friend", async (req, res) => {
-    const { username } = req.params;
-    const { friendUsername } = req.body;
+router.post("/accept-friend-request", async (req, res) => {
+    const { requesteeUsername, requesterUsername } = req.body;
 
-    if (username === friendUsername) {
-        return res.status(400).json({ error: "Cannot accept yourself" });
-    }
+    if (!requesteeUsername || !requesterUsername) return res.status(400).json({ error: "Missing requesteeUsername/requesterUsername" });
 
     try {
-        const user = await userController.getUserByUsername(username);
-        const friend = await userController.getUserByUsername(friendUsername);
+        const user = await userController.getUserByUsername(requesteeUsername);
+        const friend = await userController.getUserByUsername(requesterUsername);
 
-        if (!user || !friend) {
-            return res.status(404).json({ error: "User not found" });
-        }
+        if (!user || !friend) return res.status(404).json({ error: "User not found" });
 
-        // Ensure there is a pending friend request
+        // Accept logic
         const receivedRequest = user.friendRequestsReceived.some(id => id.equals(friend._id));
         const sentRequest = friend.friendRequestsSent.some(id => id.equals(user._id));
 
@@ -111,11 +106,8 @@ router.post("/:username/accept-friend", async (req, res) => {
             return res.status(400).json({ error: "No friend request to accept" });
         }
 
-        // Remove friend request
         user.friendRequestsReceived = user.friendRequestsReceived.filter(id => !id.equals(friend._id));
         friend.friendRequestsSent = friend.friendRequestsSent.filter(id => !id.equals(user._id));
-
-        // Add to friends
         user.friends.push(friend._id);
         friend.friends.push(user._id);
 
@@ -129,14 +121,69 @@ router.post("/:username/accept-friend", async (req, res) => {
     }
 });
 
+// Reject a friend request
+router.post("/reject-friend-request", async (req, res) => {
+    const { requesteeUsername, requesterUsername } = req.body;
 
-// Delete account
-router.delete("/:username", async (req, res) => {
-    const { username } = req.params;
+    if (!requesteeUsername || !requesterUsername) return res.status(400).json({ error: "Missing requesteeUsername/requesterUsername" });
 
     try {
-        const user = await userController.deleteUserByUsername(username);
+        const user = await userController.getUserByUsername(requesteeUsername);
+        const friend = await userController.getUserByUsername(requesterUsername);
+
+        if (!user || !friend) return res.status(404).json({ error: "User not found" });
+
+        // Reject logic
+        user.friendRequestsReceived = user.friendRequestsReceived.filter(id => !id.equals(friend._id));
+        friend.friendRequestsSent = friend.friendRequestsSent.filter(id => !id.equals(user._id));
+
+        await user.save();
+        await friend.save();
+
+        res.json({ message: "Friend request rejected" });
+    } catch (err) {
+        console.error("Error rejecting friend request:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// Remove a friend
+router.post("/remove-friend", async (req, res) => {
+    const { requesteeUsername, requesterUsername } = req.body;
+
+    if (!requesteeUsername || !requesterUsername) return res.status(400).json({ error: "Missing requesteeUsername/requesterUsername" });
+
+    try {
+        const user = await userController.getUserByUsername(requesteeUsername);
+        const friend = await userController.getUserByUsername(requesterUsername);
+
+        if (!user || !friend) return res.status(404).json({ error: "User not found" });
+
+        // Remove logic
+        user.friends = user.friends.filter(id => !id.equals(friend._id));
+        friend.friends = friend.friends.filter(id => !id.equals(user._id));
+
+        await user.save();
+        await friend.save();
+
+        res.json({ message: "Friend removed" });
+    } catch (err) {
+        console.error("Error removing friend:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// Delete account
+// NOTE: this doesn't actually delete the user, just sets status to DELETED (for recovery)
+router.post("/delete-account", async (req, res) => {
+    const { requesterUsername } = req.body;
+
+    try {
+        const user = await userController.getUserByUsername(requesterUsername);
         if (!user) return res.status(404).json({ error: "User not found" });
+
+        user.status = 'DELETED';
+        await user.save();
 
         res.json({ message: "Account deleted successfully" });
     } catch (err) {

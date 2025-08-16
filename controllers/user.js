@@ -140,13 +140,10 @@ export const getUserById = async (id) => {
 export const getUserByUsername = async (username) => {
     try {
         const user = await User.findOne({ username });
-        if (user) {
-            return user;
-        }
-        return RESPONSE_CODES.NOT_FOUND;
+        return user || null;
     } catch (error) {
         console.log(error);
-        return RESPONSE_CODES.NOT_FOUND;
+        return null;
     }
 };
 

@@ -188,6 +188,14 @@ router.post("/login", async (req, res) => {
             return res.status(403).json({ error: "Please verify your email before logging in." });
         }
 
+        if (user.status === 'BANNED') {
+            return res.status(403).json({ error: "Your account has been banned." });
+        }
+
+        if (user.status === 'DELETED') {
+            return res.status(403).json({ error: "Your account has been deleted." });
+        }
+
         const isMatch = await bcrypt.compare(password, user.salted_password);
         if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
