@@ -36,6 +36,7 @@ router.post("/get-profile", async (req, res) => {
             friends: friendsWithIdAndUsername,
             friendRequestsReceived: friendRequestsReceivedWithIdAndUsername,
             past_games: user.past_games,
+            status: user.status,
         });
     } catch (err) {
         console.error("Error fetching user profile:", err);

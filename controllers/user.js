@@ -102,8 +102,7 @@ export const loginUser = async (email, password) => {
 export const getUserByEmail = async (email) => {
     try {
         const user = await User.findOne({ email });
-        if (user) return user;
-        return RESPONSE_CODES.NOT_FOUND;
+        return user;
     } catch (error) {
         console.log(error);
         return error;
@@ -118,8 +117,7 @@ export const getUserByEmail = async (email) => {
 export const getUserById = async (id) => {
     try {
         const user = await User.findOne({ _id: id });
-        if (user) return user;
-        return RESPONSE_CODES.NOT_FOUND;
+        return user;
     } catch (error) {
         console.log(error);
         return error;
@@ -134,8 +132,7 @@ export const getUserById = async (id) => {
 export const getUserByUsername = async (username) => {
     try {
         const user = await User.findOne({ username });
-        if (user) return user;
-        return RESPONSE_CODES.NOT_FOUND;
+        return user;
     } catch (error) {
         console.log(error);
         return null;
