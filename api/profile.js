@@ -9,7 +9,7 @@ async function fetchUsernamesAndIds(userIds) {
             const user = await userController.getUserById(id);
             return {
                 id,
-                username: user ? user.username : null,
+                username: user?.username,
             };
         })
     );
