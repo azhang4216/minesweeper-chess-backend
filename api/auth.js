@@ -43,15 +43,19 @@ router.post("/reset-password", async (req, res) => {
 router.post("/create-account", async (req, res) => {
     const { email, username, password } = req.body;
 
-    if (!email || !username || !password)
+    if (!email || !username || !password) {
         return res.status(400).json({ error: "Username and password are required" });
+    }
 
     // Username validation
-    if (username.length < 3 || username.length > 20)
+    if (username.length < 3 || username.length > 20) {
         return res.status(400).json({ error: "Username must be between 3 and 20 characters" });
+    }
 
-    if (username.includes(' ') || username.includes('/'))
-        return res.status(400).json({ error: "Username cannot contain spaces or '/'" });
+    if (/[\s\W]/.test(username)) {
+        setMessage('Username cannot contain any whitespace or special characters.');
+        return;
+    }
 
     if (filter.isProfane(username)) {
         return res.status(400).json({ error: "Username contains inappropriate language" });
@@ -200,7 +204,7 @@ router.post("/login", async (req, res) => {
         if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
         const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: TOKEN_EXPIRATION });
-
+        console.log(`Generated token on login: ${token}`);
         res.json({
             message: "Login successful",
             token,
@@ -213,20 +217,28 @@ router.post("/login", async (req, res) => {
 });
 
 // ------------------------
-// VERIFY
+// VERIFY TOKEN
 // ------------------------
-router.get('/verify', async (req, res) => {
+router.get('/verify-token', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    console.log(`auth header: ${authHeader}`);
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const token = authHeader.split(' ')[1];
     try {
-        const token = req.cookies.token;
-        if (!token) return res.status(401).json({ message: 'No token' });
-
+        console.log(`Verifying token: ${token}`);
+        console.log(`JWT secret: ${JWT_SECRET}`);
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await User.findById(decoded.userId).select('email username');
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        console.log(`Decoded token: ${JSON.stringify(decoded)}`);
+        const user = await User.findById(decoded.userId).select('email username _id');
+        if (!user) return res.status(404).json({ error: 'User not found' });
 
-        res.json({ user });
+        res.json({ user: { id: user._id, username: user.username, email: user.email } });
     } catch (err) {
-        res.status(401).json({ message: 'Invalid or expired token' });
+        console.error('JWT Error:', err);
+        res.status(401).json({ error: 'Invalid or expired token' });
     }
 });
 

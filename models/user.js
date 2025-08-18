@@ -56,7 +56,7 @@ const UserSchema = new Schema({
     },
     role: {
         type: String,
-        enum: ['user', 'admin'],
+        enum: ['user', 'mod', 'admin'],
         default: 'user',
     },
     // verification for when user signs up
