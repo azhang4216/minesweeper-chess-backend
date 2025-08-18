@@ -43,15 +43,19 @@ router.post("/reset-password", async (req, res) => {
 router.post("/create-account", async (req, res) => {
     const { email, username, password } = req.body;
 
-    if (!email || !username || !password)
+    if (!email || !username || !password) {
         return res.status(400).json({ error: "Username and password are required" });
+    }
 
     // Username validation
-    if (username.length < 3 || username.length > 20)
+    if (username.length < 3 || username.length > 20){
         return res.status(400).json({ error: "Username must be between 3 and 20 characters" });
+    }
 
-    if (username.includes(' ') || username.includes('/'))
-        return res.status(400).json({ error: "Username cannot contain spaces or '/'" });
+    if (/[\s\W]/.test(username)) {
+        setMessage('Username cannot contain any whitespace or special characters.');
+        return;
+    }
 
     if (filter.isProfane(username)) {
         return res.status(400).json({ error: "Username contains inappropriate language" });
