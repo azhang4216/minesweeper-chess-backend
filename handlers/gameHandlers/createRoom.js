@@ -12,6 +12,14 @@ const createRoom = (socket, games, activePlayers) => async ({roomId, timeControl
         });
     }
 
+    if (activePlayers[playerId]) {
+        // player is already in a game!
+        return callback({
+            success: false,
+            message: "You are either already in a game or have created an active, pending game."
+        })
+    }
+
     const secsToPlay = parseInt(timeControl);
     if (!secsToPlay) {
         // this shouldn't happen

@@ -13,6 +13,15 @@ const joinRoom = (socket, io, games, activePlayers) => (roomId, callback) => {
     }
     
     console.log(`Player ${playerId} is trying to join room ${roomId}...`);
+    
+    if (activePlayers[playerId]) {
+        // player is already in a game!
+        return callback({
+            success: false,
+            message: "You are either already in a game or have created an active, pending game."
+        })
+    }
+    
     const room = games[roomId];
 
     if (!room) {
