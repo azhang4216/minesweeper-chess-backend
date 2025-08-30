@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
 import {
-    ActivePlayer,
+    // ActivePlayer,
     User
 } from "../models/index.js";
 import bcrypt from "bcryptjs";
@@ -14,6 +14,71 @@ import { Filter } from 'bad-words';
 const filter = new Filter();
 const JWT_SECRET = process.env.JWT_SECRET;
 const TOKEN_EXPIRATION = process.env.TOKEN_EXPIRATION
+
+// ------------------------
+// HELPER FUNCTIONS
+// ------------------------
+
+// Send verification email + returns boolean indicating success
+const sendVerificationEmail = async (emailVerificationToken, email) => {
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'Gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
+
+        await transporter.sendMail({
+            from: `"Landmine Chess App" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "Verify your email",
+            html: `
+                <div style="font-family: Impact, Charcoal, sans-serif; background-color: #fdfdfd; padding: 20px; text-align: center;">
+                <img src="cid:landmineLogo" alt="Landmine Chess" style="width: 100%; max-width: 350px; height: auto; margin-bottom: 20px;" />
+                <h1 style="font-size: 30px; color: #333;">Verify Your Email</h1>
+                <p style="font-size: 18px; color: #555;">
+                    Click the link below to verify your email. This link will expire in an hour.
+                </p>
+                <a href="${verifyUrl}" 
+                    style="
+                        display: inline-block;
+                        background-color: #6b4caf;
+                        color: #ffffff;
+                        text-decoration: none;
+                        font-size: 18px;
+                        padding: 12px 24px;
+                        margin-top: 20px;
+                        border-radius: 6px;
+                        font-weight: bold;
+                    ">
+                    Verify Email
+                </a>
+                </div>
+            `,
+            attachments: [{
+                filename: 'landmine_purple.png',
+                path: './constants/landmine_purple.png',
+                cid: 'landmineLogo'
+            }]
+        });
+
+        return true;
+    } catch (err) {
+        console.error(err);
+        return false;
+    }
+}
+
+// Generate new token and expiry
+const generateNewTokenAndExpiry = () => {
+    const emailVerificationToken = crypto.randomBytes(32).toString("hex");
+    const emailVerificationExpires = Date.now() + 1000 * 60 * 60; // 1 hour
+    return { emailVerificationToken, emailVerificationExpires };
+}
 
 // ------------------------
 // RESET PASSWORD 
@@ -68,8 +133,7 @@ router.post("/create-account", async (req, res) => {
         const existingEmail = await User.findOne({ email });
         if (existingEmail) return res.status(400).json({ error: "An account with this email already exists" });
 
-        const emailVerificationToken = crypto.randomBytes(32).toString("hex");
-        const emailVerificationExpires = Date.now() + 1000 * 60 * 60; // 1 hour expiry
+        const { emailVerificationToken, emailVerificationExpires } = generateNewTokenAndExpiry();
 
         const newUser = new User({
             email,
@@ -81,49 +145,11 @@ router.post("/create-account", async (req, res) => {
 
         await newUser.save();
 
-        const transporter = nodemailer.createTransport({
-            service: 'Gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
+        const successfullySentVerificationEmail = sendVerificationEmail(emailVerificationToken, email);
 
-        const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerificationToken}`;
-
-        await transporter.sendMail({
-            from: `"Landmine Chess App" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Verify your email",
-            html: `
-                <div style="font-family: Impact, Charcoal, sans-serif; background-color: #fdfdfd; padding: 20px; text-align: center;">
-                <img src="cid:landmineLogo" alt="Landmine Chess" style="width: 100%; max-width: 350px; height: auto; margin-bottom: 20px;" />
-                <h1 style="font-size: 30px; color: #333;">Verify Your Email</h1>
-                <p style="font-size: 18px; color: #555;">
-                    Click the link below to verify your email. This link will expire in an hour.
-                </p>
-                <a href="${verifyUrl}" 
-                    style="
-                        display: inline-block;
-                        background-color: #6b4caf;
-                        color: #ffffff;
-                        text-decoration: none;
-                        font-size: 18px;
-                        padding: 12px 24px;
-                        margin-top: 20px;
-                        border-radius: 6px;
-                        font-weight: bold;
-                    ">
-                    Verify Email
-                </a>
-                </div>
-            `,
-            attachments: [{
-                filename: 'landmine_purple.png',
-                path: './constants/landmine_purple.png',
-                cid: 'landmineLogo'
-            }]
-        });
+        if (!successfullySentVerificationEmail) {
+            return res.status(500).json({ error: "Failed to send verification email. Please try again later." });
+        }
 
         return res.status(201).json({
             message: "Account created. Please check your email to verify your address."
@@ -135,35 +161,63 @@ router.post("/create-account", async (req, res) => {
     }
 });
 
+// ------------------------
+// VERIFY EMAIL
+// ------------------------
 router.post('/verify-email', async (req, res) => {
     const { token } = req.body;
 
     if (!token) return res.status(400).json({ error: "Missing token" });
 
     try {
-        const user = await User.findOne({
-            emailVerificationToken: token,
-            // emailVerificationExpires: { $gt: Date.now() } 
-        });
+        const user = await User.findOne({ emailVerificationToken: token });
 
         if (!user) {
             return res.status(400).json({ error: "Invalid token" });
         } else if (user.emailVerificationExpires < Date.now()) {
-            // TODO: send another verification link?
             return res.status(400).json({ error: "Link has already expired." });
         } else if (user.isEmailVerified) {
             return res.status(400).json({ error: "Email is already verified." });
         }
 
         user.isEmailVerified = true;
-
-        // we leave the email verification stuff in the account for seeing if email is already verified
-        // user.emailVerificationToken = undefined;
-        // user.emailVerificationExpires = undefined;
-
         await user.save();
-        console.log("user successfully verified");
         return res.status(200).json({ message: "User successfully verified." });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
+// ------------------------
+// RESEND VERIFICATION EMAIL
+// ------------------------
+router.post('/resend-verification', async (req, res) => {
+    const { identifier } = req.body; // can be email or username
+    if (!identifier) return res.status(400).json({ error: "Missing email or username" });
+
+    try {
+        // Determine if it's an email or username
+        const isEmail = identifier.includes('@');
+        const query = isEmail ? { email: identifier } : { username: identifier };
+
+        const user = await User.findOne(query);
+        if (!user) return res.status(404).json({ error: `No such account with the ${isEmail ? "email" : "username"} of ${identifier} exists.` });
+        if (user.status === 'BANNED') return res.status(403).json({ error: "This account has been banned." });
+        if (user.isEmailVerified) return res.status(400).json({ error: "The account is already verified." });
+
+        const { emailVerificationToken, emailVerificationExpires } = generateNewTokenAndExpiry();
+        user.emailVerificationToken = emailVerificationToken;
+        user.emailVerificationExpires = emailVerificationExpires;
+        await user.save();
+
+        const successfullySentVerificationEmail = sendVerificationEmail(emailVerificationToken, user.email);
+
+        if (!successfullySentVerificationEmail) {
+            return res.status(500).json({ error: "Failed to send verification email. Please try again later." });
+        }
+
+        return res.status(201).json({ message: "Verification email resent. Check your inbox." });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: "Server error" });
