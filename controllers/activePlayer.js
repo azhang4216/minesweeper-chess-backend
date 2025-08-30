@@ -1,3 +1,5 @@
+// NOTE: we don't use this.
+
 import { ActivePlayer } from '../models/index.js';
 import { RESPONSE_CODES } from '../constants/index.js';
 

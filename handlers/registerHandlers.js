@@ -12,19 +12,19 @@ import requestRoomsLookingForMatch from "./gameHandlers/requestRoomsLookingForMa
 // login / reconnection handlers
 import rejoinRoom from "./loginHandlers/rejoinRoom.js";
 
-const registerHandlers = function(socket, io, rooms, activePlayerRooms, disconnectTimers, timeoutTimers) {
+const registerHandlers = function(socket, io, rooms, activePlayers, disconnectTimers, timeoutTimers) {
     // register game handlers
-    socket.on("joinRoom", joinRoom(socket, io, rooms, activePlayerRooms));
-    socket.on("placeBomb", placeBomb(socket, io, rooms, activePlayerRooms));
-    socket.on("makeMove", makeMove(socket, io, rooms, activePlayerRooms));
-    socket.on("playerDisconnect", disconnect(socket, io, rooms, activePlayerRooms));
-    socket.on("cancelRoom", cancelRoom(socket, rooms, activePlayerRooms));
-    socket.on("createRoom", createRoom(socket, rooms, activePlayerRooms));
-    socket.on("disconnect", disconnect(socket, io, rooms, activePlayerRooms, disconnectTimers));
+    socket.on("joinRoom", joinRoom(socket, io, rooms, activePlayers));
+    socket.on("placeBomb", placeBomb(socket, io, rooms, activePlayers));
+    socket.on("makeMove", makeMove(socket, io, rooms, activePlayers));
+    socket.on("playerDisconnect", disconnect(socket, io, rooms, activePlayers));
+    socket.on("cancelRoom", cancelRoom(socket, rooms, activePlayers));
+    socket.on("createRoom", createRoom(socket, rooms, activePlayers));
+    socket.on("disconnect", disconnect(socket, io, rooms, activePlayers, disconnectTimers));
     socket.on("requestRoomsLookingForMatch", requestRoomsLookingForMatch(socket, rooms));
 
     // register join / reconnection handlers
-    socket.on("rejoin", rejoinRoom(socket, activePlayerRooms, disconnectTimers));
+    socket.on("rejoin", rejoinRoom(socket, activePlayers, disconnectTimers));
     socket.on("authenticate", ({ playerId }) => {
         socket.data.playerId = playerId;
         console.log("Socket authenticated as", playerId);
