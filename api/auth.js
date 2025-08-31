@@ -298,27 +298,30 @@ router.get('/verify-token', async (req, res) => {
 
 router.get('/guest-uuid', async (_req, res) => {
     try {
-        let guestUUID;
-        let result;
+        // TODO: remove this
+        // let guestUUID;
+        // let result;
 
-        // Keep generating until we find a unique UUID (i.e., one not already in ActivePlayer)
-        do {
-            guestUUID = uuidv4();
-            result = await ActivePlayer.findOne({ playerId: guestUUID });
-        } while (result);
+        // // Keep generating until we find a unique UUID (i.e., one not already in ActivePlayer)
+        // do {
+        //     guestUUID = uuidv4();
+        //     result = await ActivePlayer.findOne({ playerId: guestUUID });
+        // } while (result);
 
-        console.log(`Generated guest UUID: ${guestUUID}`);
+        // console.log(`Generated guest UUID: ${guestUUID}`);
 
-        // Create a new ActivePlayer with the unique UUID
-        const newGuest = new ActivePlayer({
-            playerId: guestUUID,
-            isGuest: true
-        });
+        // // Create a new ActivePlayer with the unique UUID
+        // const newGuest = new ActivePlayer({
+        //     playerId: guestUUID,
+        //     isGuest: true
+        // });
 
-        await newGuest.save();
-        console.log(`Saved new guest ${guestUUID} to ActivePlayers`);
+        // await newGuest.save();
+        // console.log(`Saved new guest ${guestUUID} to ActivePlayers`);
 
-        res.json({ guestUUID });
+        // edge case: if too many active players, two player could theoretically get same UUID
+        // but realistically, the chance of a UUID collision is extremely low
+        res.json({ guestUUID: uuidv4() });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server failed to generate guest UUID' });

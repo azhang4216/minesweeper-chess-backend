@@ -1,8 +1,9 @@
 import { Chess } from "chess.js";
 import { GAME_STATES } from "../../constants/index.js";
 import { CountdownTimer, randomlyFillBombs } from "../../helpers/index.js";
+import { userController } from "../../controllers/index.js";
 
-const joinRoom = (socket, io, games, activePlayers) => (roomId, callback) => {
+const joinRoom = (socket, io, games, activePlayers) => async (roomId, callback) => {
     const playerId = socket.data.playerId;
 
     if (!playerId) {
@@ -42,12 +43,18 @@ const joinRoom = (socket, io, games, activePlayers) => (roomId, callback) => {
         console.log(`User ${playerId} is already in room ${roomId}...`);
     };
 
+    const player = await userController.getUserByUsername(playerId);
+    const playerName = player ? player.username : "Guest Player";
+    const playerElo = player ? player.elo : 1500;
+    console.log(`Player ${playerId} (${playerName}, ELO: ${playerElo}) is joining room ${roomId}`);
+
     // everything checks out - let's pair them for a game!
     room.players.push({
         user_id: playerId,
+        username: playerName,
         is_white: !room.players[0].is_white,
         bombs: [],
-        elo: 1500, // TODO: replace with real elo once profiles feature implemented
+        elo: playerElo,
     });
     console.log(`Player ${room.players[1].user_id} is white: ${room.players[1].is_white}.`)
 

@@ -52,13 +52,13 @@ const disconnect = (socket, io, games, activePlayers, disconnectTimers) => () =>
     }, timeoutMs);
 
     // Custom replacer to handle BigInt serialization
-    const safeStringify = (obj) =>
-        JSON.stringify(obj, (_key, value) =>
-            typeof value === "bigint" ? value.toString() : value
-        );
+    // const safeStringify = (obj) =>
+    //     JSON.stringify(obj, (_key, value) =>
+    //         typeof value === "bigint" ? value.toString() : value
+    //     );
 
-    console.log(`Active games: ${safeStringify(games)}`);
-    console.log(`Active players: ${safeStringify(activePlayers)}`);
+    console.log(`${Object.keys(games).length} active games`);
+    console.log(`Active players: ${Object.keys(activePlayers)}`);
 
 }
 
