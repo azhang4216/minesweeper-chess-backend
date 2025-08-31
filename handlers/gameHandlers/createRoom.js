@@ -3,6 +3,12 @@ import { userController } from "../../controllers/index.js";
 
 const createRoom = (socket, games, activePlayers) => async ({roomId, timeControl}, callback) => {
     const playerId = socket.data.playerId;
+    if (!playerId) {
+        return callback({
+            success: false,
+            message: "Player not authenticated"
+        });
+    }
     console.log(`User ${playerId} is trying to create room ${roomId} with ${timeControl} second time control.`);
 
     if (roomId in games) {
@@ -10,6 +16,14 @@ const createRoom = (socket, games, activePlayers) => async ({roomId, timeControl
             success: false,
             message: "Room ID already exists. Please choose a different one."
         });
+    }
+
+    if (activePlayers[playerId]) {
+        // player is already in a game!
+        return callback({
+            success: false,
+            message: "You are either already in a game or have created an active, pending game."
+        })
     }
 
     const secsToPlay = parseInt(timeControl);
@@ -22,17 +36,17 @@ const createRoom = (socket, games, activePlayers) => async ({roomId, timeControl
         });
     }
 
-    const playerElo = await userController.getUserElo(playerId);
+    const player = await userController.getUserByUsername(playerId);
 
     // valid room creation request: let's create a new room!
     games[roomId] = {
         players: [
             {
-                // TODO: replace id when authentication done for persistence
                 user_id: playerId,
+                username: player ? player.username : "Guest Player",
                 is_white: Math.random() < 0.5, // 50% change of being either or
                 bombs: [],
-                elo: playerElo || 1500,
+                elo: player ? player.elo : 1500,
                 // we will add the timer later, when the second player joins
             }
         ],

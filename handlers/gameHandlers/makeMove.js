@@ -91,6 +91,13 @@ const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion })
                             blackEloChange,
                         });
 
+                        // Players are no longer active in a game
+                        delete activePlayers[room.players[0].user_id];
+                        delete activePlayers[room.players[1].user_id];
+
+                        // TODO: persistent storage in DB
+                        delete games[roomId];
+
                         console.log(`Room ${roomId}: ${winnerColor} wins by timeout.`);
                     } else {
                         console.log(`Room ${roomId}: player timer went off, but game is no longer being played.`);

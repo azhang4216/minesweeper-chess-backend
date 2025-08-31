@@ -20,45 +20,48 @@ const disconnect = (socket, io, games, activePlayers, disconnectTimers) => () =>
 
     // start a grace period timeout (30 seconds)
     disconnectTimers[playerId] = setTimeout(() => {
-        console.log(`Player ${playerId} did not reconnect in time`);
+        try {
+            console.log(`Player ${playerId} did not reconnect in time`);
 
-        // remove from active player tracking
-        delete activePlayers[playerId];
-        delete disconnectTimers[playerId];
+            // remove from active player tracking
+            delete activePlayers[playerId];
+            delete disconnectTimers[playerId];
 
-        const room = games[roomId];
-        if (!room) return;
+            const room = games[roomId];
+            if (!room) return;
 
-        // whoever disconnected is the one who lost
-        const loser = room.players.find(p => p.id === playerId);
-        const winnerColor = loser.is_white ? "b" : "w";
-        const [whiteEloChange, blackEloChange] = calculateElo(
+            // whoever disconnected is the one who lost
+            const loser = room.players.find(p => p.id === playerId);
+            const winnerColor = loser.is_white ? "b" : "w";
+            const [whiteEloChange, blackEloChange] = calculateElo(
             (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
             (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
             (winnerColor === "w") ? 1 : 0,
-        );
+            );
 
-        // end game on forfeit
-        if (roomId) {
+            // end game on forfeit
+            if (roomId) {
             io.to(roomId).emit("winLossGameOver", {
                 winner: winnerColor,
                 by: "player forefeit",
                 whiteEloChange,
                 blackEloChange,
             });
+            }
+        } catch (error) {
+            console.error("Error handling disconnect timeout:", error);
         }
-
         // TODO: store game in DB
     }, timeoutMs);
 
     // Custom replacer to handle BigInt serialization
-    const safeStringify = (obj) =>
-        JSON.stringify(obj, (_key, value) =>
-            typeof value === "bigint" ? value.toString() : value
-        );
+    // const safeStringify = (obj) =>
+    //     JSON.stringify(obj, (_key, value) =>
+    //         typeof value === "bigint" ? value.toString() : value
+    //     );
 
-    console.log(`Active games: ${safeStringify(games)}`);
-    console.log(`Active players: ${safeStringify(activePlayers)}`);
+    console.log(`${Object.keys(games).length} active games`);
+    console.log(`Active players: ${Object.keys(activePlayers)}`);
 
 }
 
