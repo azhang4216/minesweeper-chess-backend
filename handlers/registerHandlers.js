@@ -12,7 +12,7 @@ import requestRoomsLookingForMatch from "./gameHandlers/requestRoomsLookingForMa
 // login / reconnection handlers
 import rejoinRoom from "./loginHandlers/rejoinRoom.js";
 
-const registerHandlers = function (socket, io, rooms, activePlayers, disconnectTimers, timeoutTimers) {
+const registerHandlers = function (socket, io, rooms, activePlayers, disconnectTimers) {
     // register game handlers
     socket.on("joinRoom", joinRoom(socket, io, rooms, activePlayers));
     socket.on("placeBomb", placeBomb(socket, io, rooms, activePlayers));

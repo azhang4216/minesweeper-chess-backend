@@ -3,6 +3,7 @@ import http from "http";
 import { Server } from "socket.io";
 // const { Redis } = require("@upstash/redis");    // for normal redis commands
 // const IORedis = require("ioredis");             // for pub sub
+// import { createClient } from 'redis';
 import dotenv from "dotenv";
 import { mongoose } from "mongoose";
 import cors from "cors";
@@ -131,11 +132,14 @@ const disconnectTimers = {};
 
 // key: player id, val: setTimeout timer
 // this is used to track players who have ended their turns
-const timeoutTimers = {};
+// const timeoutTimers = {};
+
+// const redisClient = createClient({ url: process.env.REDIS_URL })
+// await redisClient.connect()
 
 io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-    registerHandlers(socket, io, rooms, activePlayers, disconnectTimers, timeoutTimers);
+    registerHandlers(socket, io, rooms, activePlayers, disconnectTimers);
 });
 
 export { server };

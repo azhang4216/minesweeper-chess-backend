@@ -10,6 +10,7 @@ import {
 } from "chess.js";
 import { GAME_STATES } from "../../constants/index.js";
 import { calculateElo, CountdownTimer } from "../../helpers/index.js";
+import { finishAndRecordGame } from "../../helpers/endGame.js";
 
 // const handleTimerLogic = async (io, redis, roomId, room, isPlayerWhoJustMovedWhite, indexOfPlayerWhoJustMoved) => {
 //     const timerKeyOfPlayerWhoJustMoved = `player_timer:${roomId}:${isPlayerWhoJustMovedWhite ? "white" : "black"}`;
@@ -91,13 +92,16 @@ const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion })
                             blackEloChange,
                         });
 
-                        // Players are no longer active in a game
-                        delete activePlayers[room.players[0].user_id];
-                        delete activePlayers[room.players[1].user_id];
-
-                        // TODO: persistent storage in DB
-                        delete games[roomId];
-
+                        // Handle deleting game state and recording the game
+                        finishAndRecordGame(
+                            roomId,
+                            games,
+                            activePlayers,
+                            whiteEloChange,
+                            blackEloChange,
+                            "timeout",
+                            (winnerColor === "w") ? "WHITE_WINS" : "BLACK_WINS"
+                        );
                         console.log(`Room ${roomId}: ${winnerColor} wins by timeout.`);
                     } else {
                         console.log(`Room ${roomId}: player timer went off, but game is no longer being played.`);
@@ -194,6 +198,17 @@ const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion })
                         whiteEloChange,
                         blackEloChange,
                     });
+
+                    // Handle deleting game state and recording the game
+                    finishAndRecordGame(
+                        roomId,
+                        games,
+                        activePlayers,
+                        whiteEloChange,
+                        blackEloChange,
+                        "king exploded?!",
+                        (winnerColor === "w") ? "WHITE_WINS" : "BLACK_WINS"
+                    );
                 } else if (room.game.isInsufficientMaterial()) {
                     console.log("Draw by insufficient material (blew up)");
                     // case 2. a non-king piece stepped into a bomb => draw by insufficient material
@@ -211,6 +226,17 @@ const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion })
                         whiteEloChange,
                         blackEloChange,
                     });
+
+                    // Handle deleting game state and recording the game
+                    finishAndRecordGame(
+                        roomId,
+                        games,
+                        activePlayers,
+                        whiteEloChange,
+                        blackEloChange,
+                        "insufficient material (a piece exploded!)",
+                        "DRAW"
+                    );
                 }
             } else if (isWhiteKingMissing || isBlackKingMissing) {
                 const winnerColor = isBlackKingMissing ? "w" : "b";
@@ -228,6 +254,18 @@ const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion })
                     whiteEloChange,
                     blackEloChange,
                 });
+
+                // Handle deleting game state and recording the game
+                finishAndRecordGame(
+                    roomId,
+                    games,
+                    activePlayers,
+                    whiteEloChange,
+                    blackEloChange,
+                    "king captured",
+                    (winnerColor === "w") ? "WHITE_WINS" : "BLACK_WINS"
+                );
+                console.log(`Room ${roomId} ended by king being captured. ${winnerColor} won.`);
             } else if (room.game.isGameOver()) {
                 // a "usual" game over, so no "null" references
                 if (room.game.isDraw?.()) {
@@ -237,15 +275,29 @@ const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion })
                         0.5
                     );
 
+                    const result_by = room.game.isDrawByFiftyMoves?.() && "50-move rule" ||
+                        room.game.isThreefoldRepetition?.() && "threefold repetition" ||
+                        room.game.isInsufficientMaterial?.() && "insufficient material" ||
+                        room.game.isStalemate?.() && "stalemate" ||
+                        "unknown reason"; // technically, should never be this
+
                     io.to(roomId).emit("drawGameOver", {
-                        by: room.game.isDrawByFiftyMoves?.() && "50-move rule" ||
-                            room.game.isThreefoldRepetition?.() && "threefold repetition" ||
-                            room.game.isInsufficientMaterial?.() && "insufficient material" ||
-                            room.game.isStalemate?.() && "stalemate" ||
-                            null, // technically, should never be null
+                        by: result_by,
                         whiteEloChange,
                         blackEloChange,
                     });
+
+                    // Finish and record game
+                    finishAndRecordGame(
+                        roomId,
+                        games,
+                        activePlayers,
+                        whiteEloChange,
+                        blackEloChange,
+                        result_by,
+                        "DRAW"
+                    );
+                    console.log(`Room ${roomId} ended by draw. Reason: ${result_by || "unknown"}.`);
                 } else {          // someone won, and someone lost
                     // in regular chess, whoever moves last for checkmate is winner
                     const winnerColor = isPlayerWhoJustMovedWhite ? "w" : "b";
@@ -262,6 +314,18 @@ const makeMove = (socket, io, games, activePlayers) => ({ from, to, promotion })
                         whiteEloChange,
                         blackEloChange,
                     });
+
+                    // Finish and record game
+                    finishAndRecordGame(
+                        roomId,
+                        games,
+                        activePlayers,
+                        whiteEloChange,
+                        blackEloChange,
+                        "checkmate",
+                        (winnerColor === "w") ? "WHITE_WINS" : "BLACK_WINS"
+                    );
+                    console.log(`Room ${roomId} ended by checkmate. ${winnerColor} won.`);
                 };
 
                 room.game_state = GAME_STATES.game_over;
