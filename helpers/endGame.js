@@ -1,4 +1,5 @@
 import { createRecordedGame } from "../controllers/recordedGame.js";
+import { updateUserElo, addPastGame } from "../controllers/user.js";
 
 export const finishAndRecordGame = async (
     game_id,
@@ -49,11 +50,31 @@ export const finishAndRecordGame = async (
 
         if (response.type == "SUCCESS") {
             console.log(`Recorded finished game ${game_id} to database`);
+            // add a past game reference to each user
+            try {
+                await addPastGame(white_player.user_id, response.gameId);
+                await addPastGame(black_player.user_id, response.gameId);
+            } catch (err) {
+                console.error("Error adding past game reference:", err);
+            }
         } else {
             console.error("Error recording saving game to DB:", response);
         }
     } catch (error) {
         console.error("Error recording finished game:", error);
+    }
+
+    // now, we have to associate the elo changes
+    // with the users (if they are not guests)
+    try {
+        if (!white_is_guest) {
+            await updateUserElo(white_player.user_id, white_player.elo + white_elo_change);
+        }
+        if (!black_is_guest) {
+            await updateUserElo(black_player.user_id, black_player.elo + black_elo_change);
+        }
+    } catch (err) {
+        console.error("Error updating user elo:", err);
     }
 
     // clean up in-memory tracking

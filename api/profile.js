@@ -1,6 +1,6 @@
 import express from "express";
 const router = express.Router();
-import { userController } from "../controllers/index.js";
+import { userController, recordedGameController } from "../controllers/index.js";
 
 // Helper to fetch usernames and IDs for a list of user IDs
 async function fetchUsernamesAndIds(userIds) {
@@ -189,6 +189,46 @@ router.post("/delete-account", async (req, res) => {
         res.json({ message: "Account deleted successfully" });
     } catch (err) {
         console.error("Error deleting account:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// Get paginated games by username
+router.get("/games-by-username", async (req, res) => {
+    const { username, limit = 10, page = 1 } = req.query;
+    if (!username) return res.status(400).json({ error: "Missing username" });
+
+    try {
+        const user = await userController.getUserByUsername(username);
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        // Get total games count
+        const totalGames = user.past_games.length;
+
+        // Paginate
+        const startIdx = (page - 1) * limit;
+        const endIdx = startIdx + parseInt(limit);
+
+        // Get game objects from IDs
+        const games = await Promise.all(
+            user.past_games
+                .slice()
+                .reverse()
+                .slice(startIdx, endIdx)
+                .map(async (gameId) => await recordedGameController.getRecordedGameById(gameId))
+        );
+
+        console.log(`Fetched ${games.length} games for user ${username} (page ${page})`);
+        console.log(games);
+
+        res.json({
+            games,
+            totalGames,
+            page: parseInt(page),
+            limit: parseInt(limit),
+        });
+    } catch (err) {
+        console.error("Error fetching games:", err);
         res.status(500).json({ error: "Server error" });
     }
 });

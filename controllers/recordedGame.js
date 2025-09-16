@@ -95,10 +95,7 @@ export const getRecordedGameById = async (gameId) => {
         const game = await RecordedGame.findById(gameId);
         if (!game) return RESPONSE_CODES.NOT_FOUND;
 
-        return {
-            ...RESPONSE_CODES.SUCCESS,
-            game,
-        };
+        return game;
     } catch (error) {
         console.log('Error in getRecordedGameById:', error);
         return RESPONSE_CODES.INTERNAL_ERROR;
