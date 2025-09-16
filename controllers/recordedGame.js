@@ -26,6 +26,8 @@ export const createRecordedGame = async (gameData) => {
             time_control,
         } = gameData;
 
+        console.log('Creating recorded game with data:', gameData);
+
         if (
             !white_player_id || !black_player_id || !result || !result_by ||
             !bombs || !game_pgn || !time_control
@@ -93,10 +95,7 @@ export const getRecordedGameById = async (gameId) => {
         const game = await RecordedGame.findById(gameId);
         if (!game) return RESPONSE_CODES.NOT_FOUND;
 
-        return {
-            ...RESPONSE_CODES.SUCCESS,
-            game,
-        };
+        return game;
     } catch (error) {
         console.log('Error in getRecordedGameById:', error);
         return RESPONSE_CODES.INTERNAL_ERROR;

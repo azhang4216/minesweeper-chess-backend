@@ -1,4 +1,4 @@
-import { calculateElo } from "../../helpers/index.js";
+import { finishAndRecordGame } from "../../helpers/endGame.js";
 
 const disconnect = (socket, io, games, activePlayers, disconnectTimers) => () => {
     const playerId = socket.data.playerId;
@@ -33,25 +33,31 @@ const disconnect = (socket, io, games, activePlayers, disconnectTimers) => () =>
             // whoever disconnected is the one who lost
             const loser = room.players.find(p => p.id === playerId);
             const winnerColor = loser.is_white ? "b" : "w";
-            const [whiteEloChange, blackEloChange] = calculateElo(
-            (room.players[0].is_white) ? room.players[0].elo : room.players[1].elo,
-            (room.players[0].is_white) ? room.players[1].elo : room.players[0].elo,
-            (winnerColor === "w") ? 1 : 0,
-            );
 
             // end game on forfeit
             if (roomId) {
-            io.to(roomId).emit("winLossGameOver", {
-                winner: winnerColor,
-                by: "player forefeit",
-                whiteEloChange,
-                blackEloChange,
-            });
+                io.to(roomId).emit("winLossGameOver", {
+                    winner: winnerColor,
+                    by: "player forefeit",
+                    whiteEloChange,
+                    blackEloChange,
+                });
             }
+
+            // store finished game
+            const gameResult = loser.is_white ? "BLACK_WINS" : "WHITE_WINS";
+            finishAndRecordGame(
+                roomId,
+                games,
+                activePlayers,
+                white_elo_change,
+                black_elo_change,
+                "player forefeit",
+                gameResult
+            );
         } catch (error) {
             console.error("Error handling disconnect timeout:", error);
         }
-        // TODO: store game in DB
     }, timeoutMs);
 
     // Custom replacer to handle BigInt serialization
