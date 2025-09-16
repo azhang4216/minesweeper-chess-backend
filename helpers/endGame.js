@@ -30,15 +30,15 @@ export const finishAndRecordGame = async (
 
     try {
         const response = await createRecordedGame({
-            white_player_id: white_player.id,
+            white_player_id: white_player.user_id,
             white_elo_before_game_start: white_player.elo,
             white_elo_change,
-            white_is_guest: activePlayers[white_player.id]?.is_guest || true,
+            white_is_guest: activePlayers[white_player.user_id]?.is_guest || true,
 
-            black_player_id: black_player.id,
+            black_player_id: black_player.user_id,
             black_elo_before_game_start: black_player.elo,
             black_elo_change,
-            black_is_guest: activePlayers[black_player.id]?.is_guest || true,
+            black_is_guest: activePlayers[black_player.user_id]?.is_guest || true,
 
             result,
             result_by,

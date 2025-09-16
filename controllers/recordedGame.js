@@ -26,6 +26,8 @@ export const createRecordedGame = async (gameData) => {
             time_control,
         } = gameData;
 
+        console.log('Creating recorded game with data:', gameData);
+
         if (
             !white_player_id || !black_player_id || !result || !result_by ||
             !bombs || !game_pgn || !time_control

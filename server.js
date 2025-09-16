@@ -95,14 +95,14 @@ const io = new Server(server, {
         id: room_id,
         players: [
             {
-                id: string,
+                user_id: string,
                 is_white: boolean,
                 bombs: [],
                 elo: int,
                 seconds_left: int     // note: this is updated from end of their move, so does not reflect CURRENT seconds left
             },
             {
-                id: string,
+                user_id: string,
                 is_white: boolean,
                 bombs: [],
                 elo: int,
