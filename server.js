@@ -45,6 +45,7 @@ app.use(express.json()); // allows for POST routes to read req.body
 const allowedOrigins = [
     'http://localhost:3000',        // dev frontend
     process.env.FRONTEND_URL || '', // deployed frontend URL
+    "https://www.iwantcheckmate.com", // production frontend URL
 ].filter(Boolean); // filter out empty strings
 
 const corsOptions = {
